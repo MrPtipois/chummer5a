@@ -31,7 +31,8 @@ namespace Chummer
         private string _strContactRole;
         private bool _blnEnemy = false;
         private bool _loading = true;
-        private int _intOldHeight = 23;
+        private int _intLowHeight = 25;
+        private int _intFullHeight = 156;
 
         // Events.
         public Action<object> ConnectionRatingChanged;
@@ -67,12 +68,18 @@ namespace Chummer
 
         private void nudConnection_ValueChanged(object sender, EventArgs e)
         {
+            if (_loading)
+                return;
+
             // Raise the ConnectionGroupRatingChanged Event when the NumericUpDown's Value changes.
             ConnectionRatingChanged(this);
         }
 
         private void nudLoyalty_ValueChanged(object sender, EventArgs e)
         {
+            if (_loading)
+                return;
+
             // Raise the LoyaltyRatingChanged Event when the NumericUpDown's Value changes.
             // The entire ContactControl is passed as an argument so the handling event can evaluate its contents.
             LoyaltyRatingChanged(this);
@@ -98,20 +105,7 @@ namespace Chummer
         
         private void cmdExpand_Click(object sender, EventArgs e)
         {
-            if (Height > _intOldHeight)
-            {
-                int intTemp = _intOldHeight;
-                _intOldHeight = Height;
-                Height = intTemp;
-                cmdExpand.Image = Properties.Resources.Expand;
-            }
-            else
-            {
-                int intTemp = Height;
-                Height = _intOldHeight;
-                _intOldHeight = intTemp;
-                cmdExpand.Image = Properties.Resources.Collapse;
-            }
+            ExpansionToggle(!Expanded);
         }
 
         private void cboContactRole_TextChanged(object sender, EventArgs e)
@@ -211,11 +205,19 @@ namespace Chummer
             if (Path.GetExtension(_objContact.FileName) == "chum5")
             {
                 if (!blnUseRelative)
-                    GlobalOptions.MainForm.LoadCharacter(_objContact.FileName, false);
+                {
+                    Cursor = Cursors.WaitCursor;
+                    Character objOpenCharacter = frmMain.LoadCharacter(_objContact.FileName);
+                    Cursor = Cursors.Default;
+                    GlobalOptions.MainForm.OpenCharacter(objOpenCharacter, false);
+                }
                 else
                 {
                     string strFile = Path.GetFullPath(_objContact.RelativeFileName);
-                    GlobalOptions.MainForm.LoadCharacter(strFile, false);
+                    Cursor = Cursors.WaitCursor;
+                    Character objOpenCharacter = frmMain.LoadCharacter(strFile);
+                    Cursor = Cursors.Default;
+                    GlobalOptions.MainForm.OpenCharacter(objOpenCharacter, false);
                 }
             }
             else
@@ -235,6 +237,11 @@ namespace Chummer
             // Prompt the user to select a save file to associate with this Contact.
             OpenFileDialog openFileDialog = new OpenFileDialog();
             openFileDialog.Filter = "Chummer5 Files (*.chum5)|*.chum5|All Files (*.*)|*.*";
+            if (!string.IsNullOrEmpty(_objContact.FileName) && File.Exists(_objContact.FileName))
+            {
+                openFileDialog.InitialDirectory = Path.GetDirectoryName(_objContact.FileName);
+                openFileDialog.FileName = Path.GetFileName(_objContact.FileName);
+            }
 
             if (openFileDialog.ShowDialog(this) != DialogResult.OK) return;
             _objContact.FileName = openFileDialog.FileName;
@@ -631,6 +638,8 @@ namespace Chummer
                 _objContact.IsGroup = value;
             }
         }
+
+        public bool Expanded => Height > _intLowHeight;
         #endregion
 
         #region Methods
@@ -860,6 +869,20 @@ namespace Chummer
             lblType.Left = cboType.Left - 7 - lblType.Width;
             lblPreferredPayment.Left = cboPreferredPayment.Left - 7 - lblPreferredPayment.Width;
             lblHobbiesVice.Left = cboHobbiesVice.Left - 7 - lblHobbiesVice.Width;
+        }
+
+        public void ExpansionToggle(bool expand = false)
+        {
+            if (expand)
+            {
+                Height = _intFullHeight;
+                cmdExpand.Image = Properties.Resources.Expand;
+            }
+            else
+            {
+                Height = _intLowHeight;
+                cmdExpand.Image = Properties.Resources.Collapse;
+            }
         }
         #endregion
     }

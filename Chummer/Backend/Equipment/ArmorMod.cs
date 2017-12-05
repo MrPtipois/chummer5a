@@ -33,7 +33,7 @@ namespace Chummer.Backend.Equipment
     /// </summary>
     public class ArmorMod : INamedItemWithGuidAndNode
     {
-        private Guid _guiID = new Guid();
+        private Guid _guiID = Guid.Empty;
         private string _strName = string.Empty;
         private string _strCategory = string.Empty;
         private string _strArmorCapacity = "[0]";
@@ -48,7 +48,7 @@ namespace Chummer.Backend.Equipment
         private bool _blnIncludedInArmor = false;
         private bool _blnEquipped = true;
         private string _strExtra = string.Empty;
-        private Guid _guiWeaponID = new Guid();
+        private Guid _guiWeaponID = Guid.Empty;
         private XmlNode _nodBonus;
         private XmlNode _nodWirelessBonus;
         private bool _blnWirelessOn = true;
@@ -78,7 +78,8 @@ namespace Chummer.Backend.Equipment
         /// <param name="blnSkipCost">Whether or not creating the Armor should skip the Variable price dialogue (should only be used by frmSelectArmor).</param>
         public void Create(XmlNode objXmlArmorNode, TreeNode objNode, ContextMenuStrip cmsArmorGear, int intRating, List<Weapon> objWeapons, List<TreeNode> objWeaponNodes, bool blnSkipCost = false, bool blnSkipSelectForms = false)
         {
-            objXmlArmorNode.TryGetStringFieldQuickly("name", ref _strName);
+            if (objXmlArmorNode.TryGetStringFieldQuickly("name", ref _strName))
+                _objCachedMyXmlNode = null;
             objXmlArmorNode.TryGetStringFieldQuickly("category", ref _strCategory);
             objXmlArmorNode.TryGetStringFieldQuickly("armorcapacity", ref _strArmorCapacity);
             objXmlArmorNode.TryGetStringFieldQuickly("gearcapacity", ref _strGearCapacity);
@@ -130,7 +131,13 @@ namespace Chummer.Backend.Equipment
 
                     if (decMin != 0 || decMax != decimal.MaxValue)
                     {
-                        frmSelectNumber frmPickNumber = new frmSelectNumber();
+                        string strNuyenFormat = _objCharacter.Options.NuyenFormat;
+                        int intDecimalPlaces = strNuyenFormat.IndexOf('.');
+                        if (intDecimalPlaces == -1)
+                            intDecimalPlaces = 0;
+                        else
+                            intDecimalPlaces = strNuyenFormat.Length - intDecimalPlaces - 1;
+                        frmSelectNumber frmPickNumber = new frmSelectNumber(intDecimalPlaces);
                         if (decMax > 1000000)
                             decMax = 1000000;
                         frmPickNumber.Minimum = decMin;
@@ -182,11 +189,11 @@ namespace Chummer.Backend.Equipment
                     if (!string.IsNullOrEmpty(objXmlGear["devicerating"]?.InnerText))
                     {
                         Commlink objCommlink = new Commlink(_objCharacter);
-                        objCommlink.Create(objXmlGear, objGearNode, intRating, lstWeapons, lstWeaponNodes, strForceValue, false, false, !blnSkipCost);
+                        objCommlink.Create(objXmlGear, objGearNode, intRating, lstWeapons, lstWeaponNodes, strForceValue, false, false, !blnSkipCost && !blnSkipSelectForms);
                         objGear = objCommlink;
                     }
                     else
-                        objGear.Create(objXmlGear, objGearNode, intRating, lstWeapons, lstWeaponNodes, strForceValue, false, false, !blnSkipCost);
+                        objGear.Create(objXmlGear, objGearNode, intRating, lstWeapons, lstWeaponNodes, strForceValue, false, false, !blnSkipCost && !blnSkipSelectForms);
                     objGear.Capacity = "[0]";
                     objGear.ArmorCapacity = "[0]";
                     objGear.Cost = "0";
@@ -210,16 +217,20 @@ namespace Chummer.Backend.Equipment
                 // More than one Weapon can be added, so loop through all occurrences.
                 foreach (XmlNode objXmlAddWeapon in objXmlArmorNode.SelectNodes("addweapon"))
                 {
-                    var objXmlWeapon = helpers.Guid.IsGuid(objXmlAddWeapon.InnerText)
-                        ? objXmlWeaponDocument.SelectSingleNode("/chummer/weapons/weapon[id = \"" + objXmlAddWeapon.InnerText + "\" and starts-with(category, \"Cyberware\")]")
-                        : objXmlWeaponDocument.SelectSingleNode("/chummer/weapons/weapon[name = \"" + objXmlAddWeapon.InnerText + "\" and starts-with(category, \"Cyberware\")]");
+                    string strLoopID = objXmlAddWeapon.InnerText;
+                    XmlNode objXmlWeapon = strLoopID.IsGuid()
+                        ? objXmlWeaponDocument.SelectSingleNode("/chummer/weapons/weapon[id = \"" + strLoopID + "\"]")
+                        : objXmlWeaponDocument.SelectSingleNode("/chummer/weapons/weapon[name = \"" + strLoopID + "\"]");
 
-                    TreeNode objGearWeaponNode = new TreeNode();
+                    List<TreeNode> lstGearWeaponNodes = new List<TreeNode>();
                     Weapon objGearWeapon = new Weapon(_objCharacter);
-                    objGearWeapon.Create(objXmlWeapon, objGearWeaponNode, null, null);
+                    objGearWeapon.Create(objXmlWeapon, lstGearWeaponNodes, null, null, objWeapons, null, true, !blnSkipCost && !blnSkipSelectForms);
                     objGearWeapon.ParentID = InternalId;
-                    objGearWeaponNode.ForeColor = SystemColors.GrayText;
-                    objWeaponNodes.Add(objGearWeaponNode);
+                    foreach (TreeNode objLoopNode in lstGearWeaponNodes)
+                    {
+                        objLoopNode.ForeColor = SystemColors.GrayText;
+                        objWeaponNodes.Add(objLoopNode);
+                    }
                     objWeapons.Add(objGearWeapon);
 
                     _guiWeaponID = Guid.Parse(objGearWeapon.InternalId);
@@ -302,7 +313,8 @@ namespace Chummer.Backend.Equipment
             {
                 _guiID = Guid.Parse(objNode["guid"].InnerText);
             }
-            objNode.TryGetStringFieldQuickly("name", ref _strName);
+            if (objNode.TryGetStringFieldQuickly("name", ref _strName))
+                _objCachedMyXmlNode = null;
             objNode.TryGetStringFieldQuickly("category", ref _strCategory);
             objNode.TryGetInt32FieldQuickly("armor", ref _intA);
             objNode.TryGetStringFieldQuickly("armorcapacity", ref _strArmorCapacity);
@@ -367,19 +379,19 @@ namespace Chummer.Backend.Equipment
         /// Print the object's XML to the XmlWriter.
         /// </summary>
         /// <param name="objWriter">XmlTextWriter to write with.</param>
-        public void Print(XmlTextWriter objWriter)
+        public void Print(XmlTextWriter objWriter, CultureInfo objCulture)
         {
             objWriter.WriteStartElement("armormod");
             objWriter.WriteElementString("name", DisplayNameShort);
             objWriter.WriteElementString("name_english", _strName);
             objWriter.WriteElementString("category", DisplayCategory);
             objWriter.WriteElementString("category_english", _strCategory);
-            objWriter.WriteElementString("armor", _intA.ToString());
-            objWriter.WriteElementString("maxrating", _intMaxRating.ToString());
-            objWriter.WriteElementString("rating", _intRating.ToString());
+            objWriter.WriteElementString("armor", _intA.ToString(objCulture));
+            objWriter.WriteElementString("maxrating", _intMaxRating.ToString(objCulture));
+            objWriter.WriteElementString("rating", _intRating.ToString(objCulture));
             objWriter.WriteElementString("avail", TotalAvail);
-            objWriter.WriteElementString("cost", TotalCost.ToString());
-            objWriter.WriteElementString("owncost", OwnCost.ToString());
+            objWriter.WriteElementString("cost", TotalCost.ToString(_objCharacter.Options.NuyenFormat, objCulture));
+            objWriter.WriteElementString("owncost", OwnCost.ToString(_objCharacter.Options.NuyenFormat, objCulture));
             objWriter.WriteElementString("source", _objCharacter.Options.LanguageBookShort(_strSource));
             objWriter.WriteElementString("page", Page);
             objWriter.WriteElementString("included", _blnIncludedInArmor.ToString());
@@ -389,14 +401,14 @@ namespace Chummer.Backend.Equipment
             foreach (Gear objGear in _lstGear)
             {
                 // Use the Gear's SubClass if applicable.
-                if (objGear.GetType() == typeof(Commlink))
+                Commlink objCommlink = objGear as Commlink;
+                if (objCommlink != null)
                 {
-                    Commlink objCommlink = objGear as Commlink;
-                    objCommlink?.Print(objWriter);
+                    objCommlink.Print(objWriter, objCulture);
                 }
                 else
                 {
-                    objGear.Print(objWriter);
+                    objGear.Print(objWriter, objCulture);
                 }
             }
             objWriter.WriteEndElement();
@@ -475,6 +487,8 @@ namespace Chummer.Backend.Equipment
             }
             set
             {
+                if (_strName != value)
+                    _objCachedMyXmlNode = null;
                 _strName = value;
             }
         }
@@ -639,14 +653,10 @@ namespace Chummer.Backend.Equipment
                 if (_strCost.Contains("Rating"))
                 {
                     // If the cost is determined by the Rating, evaluate the expression.
-                    XmlDocument objXmlDocument = new XmlDocument();
-                    XPathNavigator nav = objXmlDocument.CreateNavigator();
-
                     string strCostExpression = _strCost;
 
                     string strCost = strCostExpression.Replace("Rating", _intRating.ToString());
-                    XPathExpression xprCost = nav.Compile(strCost);
-                    return nav.Evaluate(xprCost).ToString();
+                    return CommonFunctions.EvaluateInvariantXPath(strCost).ToString();
                 }
                 else
                 {
@@ -827,9 +837,6 @@ namespace Chummer.Backend.Equipment
                 if (_strAvail.Contains("Rating"))
                 {
                     // If the availability is determined by the Rating, evaluate the expression.
-                    XmlDocument objXmlDocument = new XmlDocument();
-                    XPathNavigator nav = objXmlDocument.CreateNavigator();
-
                     string strAvail = string.Empty;
                     string strAvailExpr = _strAvail;
 
@@ -839,8 +846,7 @@ namespace Chummer.Backend.Equipment
                         // Remove the trailing character if it is "F" or "R".
                         strAvailExpr = strAvailExpr.Substring(0, strAvailExpr.Length - 1);
                     }
-                    XPathExpression xprAvail = nav.Compile(strAvailExpr.Replace("Rating", _intRating.ToString()));
-                    strCalculated = Convert.ToInt32(nav.Evaluate(xprAvail)).ToString() + strAvail;
+                    strCalculated = Convert.ToInt32(CommonFunctions.EvaluateInvariantXPath(strAvailExpr.Replace("Rating", _intRating.ToString()))).ToString() + strAvail;
                 }
                 else
                 {
@@ -876,9 +882,6 @@ namespace Chummer.Backend.Equipment
                         if (objChild.Avail.Contains("Rating"))
                         {
                             // If the cost is determined by the Rating, evaluate the expression.
-                            XmlDocument objXmlDocument = new XmlDocument();
-                            XPathNavigator nav = objXmlDocument.CreateNavigator();
-
                             string strAvailExpression = (objChild.Avail);
 
                             string strAvailability = strAvailExpression.Replace("Rating", objChild.Rating.ToString());
@@ -890,8 +893,7 @@ namespace Chummer.Backend.Equipment
                             }
                             if (strAvailability.StartsWith('+'))
                                 strAvailability = strAvailability.Substring(1);
-                            XPathExpression xprCost = nav.Compile(strAvailability);
-                            intAvail += Convert.ToInt32(nav.Evaluate(xprCost));
+                            intAvail += Convert.ToInt32(CommonFunctions.EvaluateInvariantXPath(strAvailability));
                         }
                         else
                         {
@@ -922,8 +924,6 @@ namespace Chummer.Backend.Equipment
             {
                 if (string.IsNullOrEmpty(_strGearCapacity))
                     return "0";
-                XmlDocument objXmlDocument = new XmlDocument();
-                XPathNavigator nav = objXmlDocument.CreateNavigator();
                 string strCapacity = _strGearCapacity;
                 if (strCapacity.StartsWith("FixedValues"))
                 {
@@ -932,12 +932,9 @@ namespace Chummer.Backend.Equipment
                 }
                 strCapacity = strCapacity.CheapReplace("Capacity", () => Convert.ToDecimal(_objParent.ArmorCapacity, GlobalOptions.CultureInfo).ToString(GlobalOptions.InvariantCultureInfo));
                 strCapacity = strCapacity.Replace("Rating", _intRating.ToString());
-                XPathExpression xprCapacity = nav.Compile(strCapacity);
-
-                decimal decCapacity = Convert.ToDecimal(nav.Evaluate(xprCapacity));
 
                 //Rounding is always 'up'. For items that generate capacity, this means making it a larger negative number.
-                string strReturn = decCapacity.ToString("N2", GlobalOptions.CultureInfo);
+                string strReturn = ((double)CommonFunctions.EvaluateInvariantXPath(strCapacity)).ToString("#,0.##", GlobalOptions.CultureInfo);
 
                 return strReturn;
             }
@@ -995,8 +992,6 @@ namespace Chummer.Backend.Equipment
             {
                 if (string.IsNullOrEmpty(_strArmorCapacity))
                     return "0";
-                XmlDocument objXmlDocument = new XmlDocument();
-                XPathNavigator nav = objXmlDocument.CreateNavigator();
                 string strCapacity = _strArmorCapacity;
                 if (strCapacity.StartsWith("FixedValues"))
                 {
@@ -1008,12 +1003,9 @@ namespace Chummer.Backend.Equipment
                 bool blnSquareBrackets = strCapacity.Contains('[');
                 if (blnSquareBrackets)
                     strCapacity = strCapacity.Substring(1, strCapacity.Length - 2);
-                XPathExpression xprCapacity = nav.Compile(strCapacity);
-
-                decimal decCapacity = Convert.ToDecimal(nav.Evaluate(xprCapacity));
 
                 //Rounding is always 'up'. For items that generate capacity, this means making it a larger negative number.
-                string strReturn = decCapacity.ToString("N2", GlobalOptions.CultureInfo);
+                string strReturn = ((double)CommonFunctions.EvaluateInvariantXPath(strCapacity)).ToString("#,0.##", GlobalOptions.CultureInfo);
                 if (blnSquareBrackets)
                     strReturn = "[" + strReturn + "]";
 
@@ -1042,13 +1034,9 @@ namespace Chummer.Backend.Equipment
 
                 if (strCostExpr.Contains("Armor Cost") || strCostExpr.Contains("Rating"))
                 {
-                    XmlDocument objXmlDocument = new XmlDocument();
-                    XPathNavigator nav = objXmlDocument.CreateNavigator();
-
                     strCostExpr = strCostExpr.Replace("Armor Cost", decArmorCost.ToString(GlobalOptions.InvariantCultureInfo));
                     strCostExpr = strCostExpr.Replace("Rating", _intRating.ToString());
-                    XPathExpression xprCost = nav.Compile(strCostExpr);
-                    decReturn = Convert.ToDecimal(nav.Evaluate(xprCost).ToString(), GlobalOptions.InvariantCultureInfo);
+                    decReturn = Convert.ToDecimal(CommonFunctions.EvaluateInvariantXPath(strCostExpr), GlobalOptions.InvariantCultureInfo);
                 }
                 else
                     decReturn = Convert.ToDecimal(_strCost, GlobalOptions.InvariantCultureInfo);
@@ -1075,11 +1063,14 @@ namespace Chummer.Backend.Equipment
             }
         }
 
+        private XmlNode _objCachedMyXmlNode = null;
         public XmlNode MyXmlNode
         {
             get
             {
-                return XmlManager.Load("armor.xml")?.SelectSingleNode("/chummer/mods/mod[name = \"" + Name + "\"]");
+                if (_objCachedMyXmlNode == null || GlobalOptions.LiveCustomData)
+                    _objCachedMyXmlNode = XmlManager.Load("armor.xml")?.SelectSingleNode("/chummer/mods/mod[name = \"" + Name + "\"]");
+                return _objCachedMyXmlNode;
             }
         }
         #endregion

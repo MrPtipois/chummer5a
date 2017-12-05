@@ -42,8 +42,9 @@ namespace Chummer
     [System.ComponentModel.DesignerCategory("")]
     public class CharacterShared : Form
     {
-        protected Character _objCharacter;
-        protected CharacterOptions _objOptions;
+        protected readonly Character _objCharacter;
+        protected readonly CharacterOptions _objOptions;
+        protected bool _blnIsDirty = false;
 
         public CharacterShared(Character objCharacter)
         {
@@ -82,14 +83,17 @@ namespace Chummer
         /// </summary>
         public void AutoSaveCharacter()
         {
-            if (!Directory.Exists(Path.Combine(Application.StartupPath, "saves", "autosave")))
+            Cursor = Cursors.WaitCursor;
+            string strAutosavePath = Path.Combine(Application.StartupPath, "saves", "autosave");
+            if (!Directory.Exists(strAutosavePath))
             {
                 try
                 {
-                    Directory.CreateDirectory(Path.Combine(Application.StartupPath, "saves", "autosave"));
+                    Directory.CreateDirectory(strAutosavePath);
                 }
                 catch (UnauthorizedAccessException)
                 {
+                    Cursor = Cursors.Default;
                     MessageBox.Show(LanguageManager.GetString("Message_Insufficient_Permissions_Warning"));
                     Autosave_StopWatch.Restart();
                     return;
@@ -101,8 +105,9 @@ namespace Chummer
 
             if (string.IsNullOrEmpty(strShowFileName))
                 strShowFileName = _objCharacter.Alias;
-            string strFilePath = Path.Combine(Application.StartupPath, "saves", "autosave", strShowFileName);
+            string strFilePath = Path.Combine(strAutosavePath, strShowFileName);
             _objCharacter.Save(strFilePath);
+            Cursor = Cursors.Default;
             Autosave_StopWatch.Restart();
         }
 
@@ -113,7 +118,7 @@ namespace Chummer
         /// <param name="lblStun"></param>
         /// <param name="tipTooltip"></param>
         /// <param name="_objImprovementManager"></param>
-        protected void UpdateConditionMonitor(Label lblPhysical, Label lblStun, HtmlToolTip tipTooltip)
+        protected void UpdateConditionMonitor(Label lblPhysical, Label lblStun, ToolTip tipTooltip)
         {
             // Condition Monitor.
             int intCMPhysical = _objCharacter.PhysicalCM;
@@ -146,7 +151,7 @@ namespace Chummer
         /// <param name="tipTooltip"></param>
         /// <param name="objImprovementManager"></param>
         /// <param name="lblCMArmor"></param>
-        protected void UpdateArmorRating(Label lblArmor, HtmlToolTip tipTooltip, Label lblCMArmor = null)
+        protected void UpdateArmorRating(Label lblArmor, ToolTip tipTooltip, Label lblCMArmor = null)
         {
             // Armor Ratings.
             int intTotalArmorRating = _objCharacter.TotalArmorRating;
@@ -187,7 +192,7 @@ namespace Chummer
         /// <param name="lblSocial"></param>
         /// <param name="lblAstral"></param>
         /// <param name="tipTooltip"></param>
-        protected void RefreshLimits(Label lblPhysical, Label lblMental, Label lblSocial, Label lblAstral, HtmlToolTip tipTooltip)
+        protected void RefreshLimits(Label lblPhysical, Label lblMental, Label lblSocial, Label lblAstral, ToolTip tipTooltip)
         {
             lblPhysical.Text = _objCharacter.LimitPhysical.ToString();
             lblMental.Text = _objCharacter.LimitMental.ToString();
@@ -305,7 +310,7 @@ namespace Chummer
         /// </summary>
         /// <param name="treSpells">Treenode that will be cleared and populated.</param>
         /// <param name="cmsSpell">ContextMenuStrip that will be added to each power.</param>
-        protected void RefreshSpells(helpers.TreeView treSpells, ContextMenuStrip cmsSpell, Character _objCharacter)
+        protected static void RefreshSpells(TreeView treSpells, ContextMenuStrip cmsSpell, Character _objCharacter)
         {
             //Clear the default nodes of entries.
             foreach (TreeNode objNode in treSpells.Nodes)
@@ -315,7 +320,7 @@ namespace Chummer
             //Add the Spells that exist.
             foreach (Spell s in _objCharacter.Spells)
             {
-                treSpells.Add(s, cmsSpell, _objCharacter);
+                treSpells.Add(s, cmsSpell);
             }
         }
 
@@ -575,6 +580,130 @@ namespace Chummer
             }
         }
 
+        public bool IsDirty
+        {
+            get
+            {
+                return _blnIsDirty;
+            }
+        }
+
+        public Character CharacterObject
+        {
+            get
+            {
+                return _objCharacter;
+            }
+        }
+
+        /// <summary>
+        /// Update the Window title to show the Character's name and unsaved changes status.
+        /// </summary>
+        public virtual void UpdateWindowTitle(bool blnCanSkip = true)
+        {
+            UpdateWindowTitle(string.Empty, string.Empty, blnCanSkip);
+        }
+
+        /// <summary>
+        /// Update the Window title to show the Character's name and unsaved changes status.
+        /// </summary>
+        public void UpdateWindowTitle(string strAlias, string strMode, bool blnCanSkip = true)
+        {
+            if (Text.EndsWith('*') && blnCanSkip)
+                return;
+
+            Text = string.Empty;
+            if (!string.IsNullOrEmpty(strAlias))
+                Text += strAlias + " - ";
+            Text += strMode;
+            Text += " (" + _objCharacter.Options.Name + ")";
+            if (_blnIsDirty)
+                Text += "*";
+        }
+
+        /// <summary>
+        /// Save the Character.
+        /// </summary>
+        public virtual bool SaveCharacter(bool blnNeedConfirm = true, bool blnDoCreated = false)
+        {
+            // If the Character does not have a file name, trigger the Save As menu item instead.
+            if (string.IsNullOrEmpty(_objCharacter.FileName))
+            {
+                return SaveCharacterAs();
+            }
+            // If the Created is checked, make sure the user wants to actually save this character.
+            if (blnDoCreated)
+            {
+                if (blnNeedConfirm && !ConfirmSaveCreatedCharacter())
+                {
+                    return false;
+                }
+            }
+
+            Cursor = Cursors.WaitCursor;
+            if (_objCharacter.Save())
+            {
+                _blnIsDirty = false;
+                GlobalOptions.AddToMRUList(_objCharacter.FileName);
+                UpdateWindowTitle(false);
+                Cursor = Cursors.Default;
+
+                // If this character has just been saved as Created, close this form and re-open the character which will open it in the Career window instead.
+                if (blnDoCreated)
+                {
+                    SaveCharacterAsCreated();
+                }
+
+                return true;
+            }
+            Cursor = Cursors.Default;
+            return false;
+        }
+
+        /// <summary>
+        /// Save the Character using the Save As dialogue box.
+        /// </summary>
+        public virtual bool SaveCharacterAs(bool blnDoCreated = false)
+        {
+            // If the Created is checked, make sure the user wants to actually save this character.
+            if (blnDoCreated)
+            {
+                if (!ConfirmSaveCreatedCharacter())
+                {
+                    return false;
+                }
+            }
+
+            SaveFileDialog saveFileDialog = new SaveFileDialog();
+            saveFileDialog.Filter = "Chummer5 Files (*.chum5)|*.chum5|All Files (*.*)|*.*";
+
+            string strShowFileName = string.Empty;
+            string[] strFile = _objCharacter.FileName.Split(Path.DirectorySeparatorChar);
+            strShowFileName = strFile[strFile.Length - 1];
+
+            if (string.IsNullOrEmpty(strShowFileName))
+                strShowFileName = _objCharacter.Alias;
+
+            saveFileDialog.FileName = strShowFileName;
+
+            if (saveFileDialog.ShowDialog(this) == DialogResult.OK)
+            {
+                _objCharacter.FileName = saveFileDialog.FileName;
+                return SaveCharacter(false);
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Save the character as Created and re-open it in Career Mode.
+        /// </summary>
+        public virtual void SaveCharacterAsCreated() { }
+
+        /// <summary>
+        /// Verify that the user wants to save this character as Created.
+        /// </summary>
+        public virtual bool ConfirmSaveCreatedCharacter() { return true; }
 
         /// <summary>
         /// Processes the string strDrain into a calculated Drain dicepool and appropriate display attributes and labels.
@@ -607,15 +736,13 @@ namespace Chummer
             }
             if (objDrain != null)
             {
-                XmlDocument objXmlDocument = new XmlDocument();
-                XPathNavigator nav = objXmlDocument.CreateNavigator();
                 try
                 {
-                    intDrain = Convert.ToInt32(nav.Evaluate(objDrain.ToString()));
+                    intDrain = Convert.ToInt32(Math.Ceiling((double)CommonFunctions.EvaluateInvariantXPath(objDrain.ToString())));
                 }
-                catch (XPathException)
-                {
-                }
+                catch (XPathException) { }
+                catch (OverflowException) { } // Result is text and not a double
+                catch (InvalidCastException) { } // Result is text and not a double
             }
 
             if (valueText != null || tooltip != null)

@@ -237,12 +237,15 @@ namespace Chummer.UI.Skills
                     $"{LanguageManager.GetString("Label_Category")} {displayName}", 
                     skill => skill.SkillCategory == objNode.InnerText));
 
-            ret.AddRange(
-                from string attribute
-                in AttributeSection.AttributeStrings
-                select new Tuple<string, Predicate<Skill>>(
-                    $"{LanguageManager.GetString("String_ExpenseAttribute")}: {LanguageManager.GetString($"String_Attribute{attribute}Short")}",
-                    skill => skill.Attribute == attribute));
+            foreach (string strAttribute in AttributeSection.AttributeStrings)
+            {
+                string strAttributeShort = LanguageManager.GetString($"String_Attribute{strAttribute}Short", false);
+                if (!string.IsNullOrEmpty(strAttributeShort))
+                {
+                    ret.Add(new Tuple<string, Predicate<Skill>>($"{LanguageManager.GetString("String_ExpenseAttribute")}: {strAttributeShort}",
+                        skill => skill.Attribute == strAttribute));
+                }
+            }
 
             ret.AddRange(
                 from SkillGroup @group
@@ -302,12 +305,15 @@ namespace Chummer.UI.Skills
                     $"{LanguageManager.GetString("Label_Category")} {displayName}",
                     skill => skill.SkillCategory == objNode.InnerText));
 
-            ret.AddRange(
-                from string attribute
-                in AttributeSection.AttributeStrings
-                select new Tuple<string, Predicate<KnowledgeSkill>>(
-                    $"{LanguageManager.GetString("String_ExpenseAttribute")}: {LanguageManager.GetString($"String_Attribute{attribute}Short")}",
-                    skill => skill.Attribute == attribute));
+            foreach (string strAttribute in AttributeSection.AttributeStrings)
+            {
+                string strAttributeShort = LanguageManager.GetString($"String_Attribute{strAttribute}Short", false);
+                if (!string.IsNullOrEmpty(strAttributeShort))
+                {
+                    ret.Add(new Tuple<string, Predicate<KnowledgeSkill>>($"{LanguageManager.GetString("String_ExpenseAttribute")}: {strAttributeShort}",
+                        skill => skill.Attribute == strAttribute));
+                }
+            }
             /*
             ret.AddRange(
                 from SkillGroup @group
@@ -326,6 +332,8 @@ namespace Chummer.UI.Skills
             {
                 Location = new Point(0, 15),
             };
+            _groups.Filter(x => x.SkillList.Any(y => _character.SkillsSection.SkillsDictionary.ContainsKey(y.Name)), true);
+
             sw.TaskEnd("_groups");
 
             splitSkills.Panel1.Controls.Add(_groups);

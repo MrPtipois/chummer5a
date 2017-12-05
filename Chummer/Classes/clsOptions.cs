@@ -146,8 +146,8 @@ namespace Chummer
 
         private static frmMain _frmMainForm;
         private static readonly RegistryKey _objBaseChummerKey;
-        public static readonly string DefaultLanguage = "en-us";
-        public static readonly string DefaultCharacterSheetDefaultValue = "Shadowrun 5 (Rating greater 0)";
+        public const string DefaultLanguage = "en-us";
+        public const string DefaultCharacterSheetDefaultValue = "Shadowrun 5 (Rating greater 0)";
 
         private static bool _blnAutomaticUpdate = false;
         private static bool _blnLiveCustomData = false;
@@ -163,6 +163,7 @@ namespace Chummer
         private static bool _blnDronemods = false;
         private static bool _blnDronemodsMaximumPilot = false;
         private static bool _blnPreferNightlyUpdates = false;
+        private static bool _blnLiveUpdateCleanCharacterFiles = false;
 
         // Omae Information.
         private static bool _omaeEnabled = false;
@@ -172,9 +173,6 @@ namespace Chummer
 
         private static XmlDocument _objXmlClipboard = new XmlDocument();
         private static ClipboardContentType _objClipboardContentType = new ClipboardContentType();
-
-        public static readonly GradeList CyberwareGrades = new GradeList();
-        public static readonly GradeList BiowareGrades = new GradeList();
 
         // PDF information.
         private static string _strPDFAppPath = string.Empty;
@@ -240,6 +238,8 @@ namespace Chummer
 
             LoadBoolFromRegistry(ref _blnLiveCustomData, "livecustomdata");
 
+            LoadBoolFromRegistry(ref _blnLiveUpdateCleanCharacterFiles, "liveupdatecleancharacterfiles");
+
             LoadBoolFromRegistry(ref _lifeModuleEnabled, "lifemodule");
 
             LoadBoolFromRegistry(ref _omaeEnabled, "omaeenabled");
@@ -274,9 +274,23 @@ namespace Chummer
             LoadBoolFromRegistry(ref _blnOmaeAutoLogin, "omaeautologin");
             // Language.
             LoadStringFromRegistry(ref _strLanguage, "language");
-            if (_strLanguage == "en-us2")
+            switch (_strLanguage)
             {
-                _strLanguage = GlobalOptions.DefaultLanguage;
+                case "en-us2":
+                    _strLanguage = GlobalOptions.DefaultLanguage;
+                    break;
+                case "de":
+                    _strLanguage = "de-de";
+                    break;
+                case "fr":
+                    _strLanguage = "fr-fr";
+                    break;
+                case "jp":
+                    _strLanguage = "jp-jp";
+                    break;
+                case "zh":
+                    _strLanguage = "zh-cn";
+                    break;
             }
             // Startup in Fullscreen mode.
             LoadBoolFromRegistry(ref _blnStartupFullscreen, "startupfullscreen");
@@ -403,9 +417,6 @@ namespace Chummer
                     _lstSourcebookInfo.Add(objSource);
                 }
             }
-
-            CyberwareGrades.LoadList(Improvement.ImprovementSource.Cyberware);
-            BiowareGrades.LoadList(Improvement.ImprovementSource.Bioware);
         }
         #endregion
 
@@ -437,6 +448,18 @@ namespace Chummer
             set
             {
                 _blnLiveCustomData = value;
+            }
+        }
+
+        public static bool LiveUpdateCleanCharacterFiles
+        {
+            get
+            {
+                return _blnLiveUpdateCleanCharacterFiles;
+            }
+            set
+            {
+                _blnLiveUpdateCleanCharacterFiles = value;
             }
         }
 
@@ -802,8 +825,11 @@ namespace Chummer
         /// Add a file to the most recently used characters.
         /// </summary>
         /// <param name="strFile">Name of the file to add.</param>
-        public static void AddToMRUList(string strFile, string strMRUType = "mru")
+        public static void AddToMRUList(string strFile, string strMRUType = "mru", bool blnDoMRUChanged = true, int intIndex = 0)
         {
+            if (string.IsNullOrEmpty(strFile))
+                return;
+
             List<string> strFiles = ReadMRUList(strMRUType);
 
             // Make sure the file doesn't exist in the sticky MRU list if we're adding to base MRU list.
@@ -813,46 +839,126 @@ namespace Chummer
                 if (strStickyFiles.Contains(strFile))
                     return;
             }
+            int i = intIndex;
             // Make sure the file does not already exist in the MRU list.
-            if (strFiles.Contains(strFile))
-                strFiles.Remove(strFile);
+            int intOldIndex = strFiles.IndexOf(strFile);
+            if (intOldIndex != -1)
+            {
+                if (intOldIndex == intIndex)
+                    return;
+                strFiles.RemoveAt(intOldIndex);
+                if (i > intOldIndex)
+                    i = intOldIndex;
+            }
 
-            strFiles.Insert(0, strFile);
+            strFiles.Insert(intIndex, strFile);
 
             if (strFiles.Count > 10)
                 strFiles.RemoveRange(10, strFiles.Count - 10);
 
-            int i = 0;
             foreach (string strItem in strFiles)
             {
                 i++;
                 _objBaseChummerKey.SetValue(strMRUType + i.ToString(), strItem);
             }
-            MRUChanged?.Invoke();
+            if (blnDoMRUChanged && MRUChanged != null)
+                MRUChanged.Invoke();
         }
 
         /// <summary>
         /// Remove a file from the most recently used characters.
         /// </summary>
         /// <param name="strFile">Name of the file to remove.</param>
-        public static void RemoveFromMRUList([NotNull] string strFile, string strMRUType = "mru")
+        public static void RemoveFromMRUList([NotNull] string strFile, string strMRUType = "mru", bool blnDoMRUChanged = true)
         {
             List<string> strFiles = ReadMRUList(strMRUType);
 
-            if (strFile.Contains(strFile))
+            int intFileIndex = strFiles.IndexOf(strFile);
+            if (intFileIndex != -1)
             {
-                strFiles.Remove(strFile);
+                strFiles.RemoveAt(intFileIndex);
+                for (int i = intFileIndex; i < 10; i++)
+                {
+                    if (i < strFiles.Count)
+                        _objBaseChummerKey.SetValue(strMRUType + (i + 1).ToString(), strFiles[i]);
+                    else
+                        _objBaseChummerKey.DeleteValue(strMRUType + (i + 1).ToString(), false);
+                }
+                if (blnDoMRUChanged && MRUChanged != null)
+                    MRUChanged.Invoke();
             }
-            for (int i = 0; i < 10; i++)
+        }
+
+        /// <summary>
+        /// Add a list of files to the beginning of the most recently used characters.
+        /// </summary>
+        /// <param name="lstFilesToAdd">Names of the files to add (files added in reverse order).</param>
+        public static void AddToMRUList(List<string> lstFilesToAdd, string strMRUType = "mru", bool blnDoMRUChanged = true)
+        {
+            bool blnAnyChange = false;
+            List<string> strFiles = ReadMRUList(strMRUType);
+            List<string> strStickyFiles = strMRUType == "mru" ? ReadMRUList("stickymru") : null;
+            foreach (string strFile in lstFilesToAdd)
             {
-                if (_objBaseChummerKey.GetValue(strMRUType + i.ToString()) != null)
-                    _objBaseChummerKey.DeleteValue(strMRUType + i.ToString());
+                if (string.IsNullOrEmpty(strFile))
+                    continue;
+                // Make sure the file doesn't exist in the sticky MRU list if we're adding to base MRU list.
+                if (strStickyFiles?.Contains(strFile) == true)
+                    continue;
+
+                blnAnyChange = true;
+
+                // Make sure the file does not already exist in the MRU list.
+                if (strFiles.Contains(strFile))
+                    strFiles.Remove(strFile);
+
+                strFiles.Insert(0, strFile);
             }
-            for (int i = 0; i < strFiles.Count; i++)
+
+            if (strFiles.Count > 10)
+                strFiles.RemoveRange(10, strFiles.Count - 10);
+
+            if (blnAnyChange)
             {
-                _objBaseChummerKey.SetValue(strMRUType + (i + 1).ToString(), strFiles[i]);
+                int i = 0;
+                foreach (string strItem in strFiles)
+                {
+                    i++;
+                    _objBaseChummerKey.SetValue(strMRUType + i.ToString(), strItem);
+                }
+                if (blnDoMRUChanged && MRUChanged != null)
+                    MRUChanged.Invoke();
             }
-            MRUChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// Remove a list of files from the most recently used characters.
+        /// </summary>
+        /// <param name="lstFilesToRemove">Names of the files to remove.</param>
+        public static void RemoveFromMRUList(List<string> lstFilesToRemove, string strMRUType = "mru", bool blnDoMRUChanged = true)
+        {
+            List<string> strFiles = ReadMRUList(strMRUType);
+            bool blnAnyChange = false;
+            foreach (string strFile in lstFilesToRemove)
+            {
+                if (strFiles.Contains(strFile))
+                {
+                    strFiles.Remove(strFile);
+                    blnAnyChange = true;
+                }
+            }
+            if (blnAnyChange)
+            {
+                for (int i = 0; i < 10; i++)
+                {
+                    if (i < strFiles.Count)
+                        _objBaseChummerKey.SetValue(strMRUType + (i + 1).ToString(), strFiles[i]);
+                    else
+                        _objBaseChummerKey.DeleteValue(strMRUType + (i + 1).ToString(), false);
+                }
+                if (blnDoMRUChanged && MRUChanged != null)
+                    MRUChanged.Invoke();
+            }
         }
 
         /// <summary>
@@ -868,11 +974,11 @@ namespace Chummer
                 if (objLoopValue != null)
                 {
                     string strFileName = objLoopValue.ToString();
-                    if (File.Exists(strFileName))
+                    if (File.Exists(strFileName) && !lstFiles.Contains(strFileName))
                         lstFiles.Add(strFileName);
                 }
             }
-            return lstFiles.Distinct().ToList();
+            return lstFiles;
         }
         #endregion
 
