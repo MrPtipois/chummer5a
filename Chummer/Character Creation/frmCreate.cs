@@ -337,7 +337,7 @@ namespace Chummer
             {
                 nudMugshotIndex.Minimum = 1;
                 nudMugshotIndex.Maximum = _objCharacter.Mugshots.Count;
-                nudMugshotIndex.Value = _objCharacter.MainMugshotIndex + 1;
+                nudMugshotIndex.Value = Math.Max(_objCharacter.MainMugshotIndex, 0) + 1;
             }
             else
             {
@@ -983,10 +983,12 @@ namespace Chummer
             if (!e.Cancel)
             {
                 _blnLoading = true;
+                Cursor = Cursors.WaitCursor;
                 Application.Idle -= UpdateCharacterInfo;
                 Application.Idle -= LiveUpdateFromCharacterFile;
                 GlobalOptions.MainForm.OpenCharacters.Remove(_objCharacter);
                 GlobalOptions.MainForm.OpenCharacterForms.Remove(this);
+                GlobalOptions.MainForm.CharacterRoster.PopulateCharacterList(); // Regenerates character list
                 if (!_blnSkipToolStripRevert)
                     ToolStripManager.RevertMerge("toolStrip");
 
@@ -5362,21 +5364,8 @@ namespace Chummer
             }
             else if (chkIsMainMugshot.Checked == false && decimal.ToInt32(nudMugshotIndex.Value) - 1 == _objCharacter.MainMugshotIndex)
             {
-                if (_objCharacter.MainMugshotIndex == 0)
-                {
-                    if (_objCharacter.Mugshots.Count > 1)
-                    {
-                        _objCharacter.MainMugshotIndex = 1;
-                        blnStatusChanged = true;
-                    }
-                    else
-                        chkIsMainMugshot.Checked = true;
-                }
-                else
-                {
-                    _objCharacter.MainMugshotIndex = 0;
-                    blnStatusChanged = true;
-                }
+                _objCharacter.MainMugshotIndex = -1;
+                blnStatusChanged = true;
             }
 
             if (blnStatusChanged)
