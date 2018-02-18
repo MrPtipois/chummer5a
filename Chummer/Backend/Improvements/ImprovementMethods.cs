@@ -89,6 +89,8 @@ namespace Chummer
                     return objImprovementAdder.addcomplexform;
                 case "ADDGEAR":
                     return objImprovementAdder.addgear;
+                case "ADDWEAPON":
+                    return objImprovementAdder.addweapon;
                 case "SELECTAIPROGRAM":
                     return objImprovementAdder.selectaiprogram;
                 case "SELECTINHERENTAIPROGRAM":
@@ -141,6 +143,8 @@ namespace Chummer
                     return objImprovementAdder.skillgroup;
                 case "SKILLATTRIBUTE":
                     return objImprovementAdder.skillattribute;
+                case "SKILLLINKEDATTRIBUTE":
+                    return objImprovementAdder.skilllinkedattribute;
                 case "SKILLARTICULATION":
                     return objImprovementAdder.skillarticulation;
                 case "ARMOR":
@@ -193,8 +197,6 @@ namespace Chummer
                     return objImprovementAdder.basiclifestylecost;
                 case "GENETECHCOSTMULTIPLIER":
                     return objImprovementAdder.genetechcostmultiplier;
-                case "TRANSGENICSGENETECHCOST":
-                    return objImprovementAdder.transgenicsgenetechcost;
                 case "BASICBIOWAREESSMULTIPLIER":
                     return objImprovementAdder.basicbiowareessmultiplier;
                 case "BIOWAREESSMULTIPLIER":
@@ -375,6 +377,8 @@ namespace Chummer
                     return objImprovementAdder.drainvalue;
                 case "FADINGRESIST":
                     return objImprovementAdder.fadingresist;
+                case "FADINGVALUE":
+                    return objImprovementAdder.fadingvalue;
                 case "NOTORIETY":
                     return objImprovementAdder.notoriety;
                 case "STREETCRED":

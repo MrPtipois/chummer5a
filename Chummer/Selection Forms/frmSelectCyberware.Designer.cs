@@ -13,9 +13,10 @@ namespace Chummer
         /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
-            if (disposing && (components != null))
+            if (disposing)
             {
-                components.Dispose();
+                components?.Dispose();
+                tipTooltip?.Dispose();
             }
             base.Dispose(disposing);
         }
@@ -57,7 +58,6 @@ namespace Chummer
             this.lblESSDiscountPercentLabel = new System.Windows.Forms.Label();
             this.lblTest = new System.Windows.Forms.Label();
             this.lblTestLabel = new System.Windows.Forms.Label();
-            this.chkTransgenic = new System.Windows.Forms.CheckBox();
             this.tipTooltip = new TheArtOfDev.HtmlRenderer.WinForms.HtmlToolTip();
             this.lblCyberwareNotes = new System.Windows.Forms.Label();
             this.lblCyberwareNotesLabel = new System.Windows.Forms.Label();
@@ -92,7 +92,6 @@ namespace Chummer
             this.lblCategory.TabIndex = 22;
             this.lblCategory.Tag = "Label_Category";
             this.lblCategory.Text = "Category:";
-            this.lblCategory.Click += new System.EventHandler(this.lblCategory_Click);
             // 
             // label1
             // 
@@ -366,19 +365,6 @@ namespace Chummer
             this.lblTestLabel.Tag = "Label_Test";
             this.lblTestLabel.Text = "Test:";
             // 
-            // chkTransgenic
-            // 
-            this.chkTransgenic.AutoSize = true;
-            this.chkTransgenic.Location = new System.Drawing.Point(382, 202);
-            this.chkTransgenic.Name = "chkTransgenic";
-            this.chkTransgenic.Size = new System.Drawing.Size(115, 17);
-            this.chkTransgenic.TabIndex = 18;
-            this.chkTransgenic.Tag = "Checkbox_Transgenic";
-            this.chkTransgenic.Text = "Add as Transgenic";
-            this.chkTransgenic.UseVisualStyleBackColor = true;
-            this.chkTransgenic.Visible = false;
-            this.chkTransgenic.CheckedChanged += new System.EventHandler(this.chkTransgenic_CheckedChanged);
-            // 
             // tipTooltip
             // 
             this.tipTooltip.AllowLinksHandling = true;
@@ -519,7 +505,6 @@ namespace Chummer
             this.Controls.Add(this.chkBlackMarketDiscount);
             this.Controls.Add(this.lblCyberwareNotes);
             this.Controls.Add(this.lblCyberwareNotesLabel);
-            this.Controls.Add(this.chkTransgenic);
             this.Controls.Add(this.lblTest);
             this.Controls.Add(this.lblTestLabel);
             this.Controls.Add(this.nudESSDiscount);
@@ -597,7 +582,6 @@ namespace Chummer
         private System.Windows.Forms.Label lblESSDiscountPercentLabel;
         private System.Windows.Forms.Label lblTest;
         private System.Windows.Forms.Label lblTestLabel;
-        private System.Windows.Forms.CheckBox chkTransgenic;
         private TheArtOfDev.HtmlRenderer.WinForms.HtmlToolTip tipTooltip;
         private System.Windows.Forms.Label lblCyberwareNotes;
         private System.Windows.Forms.Label lblCyberwareNotesLabel;

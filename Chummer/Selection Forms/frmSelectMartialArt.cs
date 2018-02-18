@@ -16,25 +16,23 @@
  *  You can obtain the full source code for Chummer5a at
  *  https://github.com/chummer5a/chummer5a
  */
-using Chummer.Backend;
+
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Windows.Forms;
-using System.Xml;
+using System.Xml.XPath;
 
 namespace Chummer
 {
     public partial class frmSelectMartialArt : Form
     {
         private string _strSelectedMartialArt = string.Empty;
-
-        private bool _blnLoading = true;
-        private bool _blnAddAgain = false;
+        
+        private bool _blnAddAgain;
         private string _strForcedValue = string.Empty;
-        private bool _blnShowQualities = false;
+        private bool _blnShowQualities;
 
-        private readonly XmlDocument _objXmlDocument = null;
+        private readonly XPathNavigator _xmlBaseMartialArtsNode;
         private readonly Character _objCharacter;
 
         #region Control Events
@@ -45,32 +43,27 @@ namespace Chummer
             _objCharacter = objCharacter;
 
             // Load the Martial Arts information.
-            _objXmlDocument = XmlManager.Load("martialarts.xml");
+            _xmlBaseMartialArtsNode = XmlManager.Load("martialarts.xml").GetFastNavigator().SelectSingleNode("/chummer/martialarts");
         }
 
         private void frmSelectMartialArt_Load(object sender, EventArgs e)
         {
-            foreach (Label objLabel in Controls.OfType<Label>())
-            {
-                if (objLabel.Text.StartsWith('['))
-                    objLabel.Text = string.Empty;
-            }
-
-            XmlNodeList objArtList = null;
+            XPathNodeIterator objArtList = null;
             // Populate the Martial Arts list.
             if (!string.IsNullOrEmpty(_strForcedValue))
             {
-                objArtList = _objXmlDocument.SelectNodes("/chummer/martialarts/martialart[name = \"" + _strForcedValue + "\"]");
+                objArtList = _xmlBaseMartialArtsNode.Select("martialart[name = \"" + _strForcedValue + "\"]");
             }
             if (objArtList == null || objArtList.Count == 0)
-                objArtList = _objXmlDocument.SelectNodes("/chummer/martialarts/martialart[" + _objCharacter.Options.BookXPath() + "]");
+                objArtList = _xmlBaseMartialArtsNode.Select("martialart[" + _objCharacter.Options.BookXPath() + "]");
 
             List<ListItem> lstMartialArt = new List<ListItem>();
-            foreach (XmlNode objXmlArt in objArtList)
+            foreach (XPathNavigator objXmlArt in objArtList)
             {
-                if (_blnShowQualities == (objXmlArt["quality"] != null) && objXmlArt.RequirementsMet(_objCharacter))
+                string strId = objXmlArt.SelectSingleNode("id")?.Value;
+                if (!string.IsNullOrEmpty(strId) && _blnShowQualities == (objXmlArt.SelectSingleNode("quality") != null) && objXmlArt.RequirementsMet(_objCharacter))
                 {
-                    lstMartialArt.Add(new ListItem(objXmlArt["id"].InnerText, objXmlArt["translate"]?.InnerText ?? objXmlArt["name"].InnerText));
+                    lstMartialArt.Add(new ListItem(strId, objXmlArt.SelectSingleNode("translate")?.Value ?? objXmlArt.SelectSingleNode("name")?.Value ?? LanguageManager.GetString("String_Unknown", GlobalOptions.Language)));
                 }
             }
             lstMartialArt.Sort(CompareListItems.CompareNames);
@@ -85,8 +78,6 @@ namespace Chummer
                 AcceptForm();
             }
             lstMartialArts.EndUpdate();
-
-            _blnLoading = false;
         }
 
         private void cmdOK_Click(object sender, EventArgs e)
@@ -106,19 +97,16 @@ namespace Chummer
 
         private void lstMartialArts_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if (_blnLoading)
-                return;
-
             string strSelectedId = lstMartialArts.SelectedValue?.ToString();
             if (!string.IsNullOrEmpty(strSelectedId))
             {
                 // Populate the Martial Arts list.
-                XmlNode objXmlArt = _objXmlDocument.SelectSingleNode("/chummer/martialarts/martialart[id = \"" + strSelectedId + "\"]");
+                XPathNavigator objXmlArt = _xmlBaseMartialArtsNode.SelectSingleNode("martialart[id = \"" + strSelectedId + "\"]");
 
                 if (objXmlArt != null)
                 {
-                    string strSource = objXmlArt["source"].InnerText;
-                    string strPage = objXmlArt["altpage"]?.InnerText ?? objXmlArt["page"].InnerText;
+                    string strSource = objXmlArt.SelectSingleNode("source")?.Value ?? LanguageManager.GetString("String_Unknown", GlobalOptions.Language);
+                    string strPage = objXmlArt.SelectSingleNode("altpage")?.Value ?? objXmlArt.SelectSingleNode("page")?.Value ?? LanguageManager.GetString("String_Unknown", GlobalOptions.Language);
                     lblSource.Text = CommonFunctions.LanguageBookShort(strSource, GlobalOptions.Language) + ' ' + strPage;
 
                     tipTooltip.SetToolTip(lblSource, CommonFunctions.LanguageBookLong(strSource, GlobalOptions.Language) + ' ' + LanguageManager.GetString("String_Page", GlobalOptions.Language) + ' ' + strPage);
@@ -147,38 +135,20 @@ namespace Chummer
         /// <summary>
         /// Whether or not the user wants to add another item after this one.
         /// </summary>
-        public bool AddAgain
-        {
-            get
-            {
-                return _blnAddAgain;
-            }
-        }
+        public bool AddAgain => _blnAddAgain;
 
         /// <summary>
         /// Martial Art that was selected in the dialogue.
         /// </summary>
-        public string SelectedMartialArt
-        {
-            get
-            {
-                return _strSelectedMartialArt;
-            }
-        }
+        public string SelectedMartialArt => _strSelectedMartialArt;
 
         /// <summary>
         /// Only show Martial Arts that are provided by a quality
         /// </summary>
         public bool ShowQualities
         {
-            get
-            {
-                return _blnShowQualities;
-            }
-            set
-            {
-                _blnShowQualities = value;
-            }
+            get => _blnShowQualities;
+            set => _blnShowQualities = value;
         }
 
         /// <summary>
@@ -186,10 +156,7 @@ namespace Chummer
         /// </summary>
         public string ForcedValue
         {
-            set
-            {
-                _strForcedValue = value;
-            }
+            set => _strForcedValue = value;
         }
         #endregion
 

@@ -1,4 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--This file is part of Chummer5a.
+
+    Chummer5a is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Chummer5a is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Chummer5a.  If not, see <http://www.gnu.org/licenses/>.
+
+    You can obtain the full source code for Chummer5a at
+    https://github.com/chummer5a/chummer5a
+-->
 <chummer>
   <version>-500</version>
   <chummer file="armor.xml">
@@ -21814,7 +21832,7 @@
             <translate>Tecnomante - 6 Ressonância/7 Formas Complexas</translate>
           </talent>
           <talent>
-            <name>AI - 6 Depth</name>
+            <name>A.I. - 6 Depth</name>
             <translate>IA - 6 Profundidade</translate>
           </talent>
         </talents>
@@ -21849,7 +21867,7 @@
             <translate>Tecnomante - 4 Ressonância/5 Formas Complexas</translate>
           </talent>
           <talent>
-            <name>AI - 4 Depth</name>
+            <name>A.I. - 4 Depth</name>
             <translate>IA - 4 Profundidade</translate>
           </talent>
         </talents>
@@ -21892,7 +21910,7 @@
             <translate>Tecnomante - 3 Ressonância/3 Formas Complexas</translate>
           </talent>
           <talent>
-            <name>AI - 3 Depth</name>
+            <name>A.I. - 3 Depth</name>
             <translate>IA - 3 Profundidade</translate>
           </talent>
         </talents>
@@ -21919,7 +21937,7 @@
             <translate>Aprendiz - 2 Magia</translate>
           </talent>
           <talent>
-            <name>AI - 2 Depth</name>
+            <name>A.I. - 2 Depth</name>
             <translate>IA - 2 Profundidade</translate>
           </talent>
         </talents>
@@ -21934,7 +21952,7 @@
             <translate>Mundano</translate>
           </talent>
           <talent>
-            <name>AI - 2 Depth</name>
+            <name>A.I. - 2 Depth</name>
             <translate>IA - 2 Pronfudidade</translate>
           </talent>
         </talents>
@@ -22864,18 +22882,21 @@
         <name>Magician</name>
         <translate>Mago</translate>
         <altpage>69</altpage>
+        <altnameonpage>Mago</altnameonpage>
       </quality>
       <quality>
         <id>55247bdc-c313-4614-ae15-5012308096ff</id>
         <name>Adept</name>
         <translate>Adepto</translate>
         <altpage>69</altpage>
+        <altnameonpage>Adeptos</altnameonpage>
       </quality>
       <quality>
         <id>9d53e1e4-3f31-40cb-bfbe-4b94f5ba757e</id>
         <name>Mystic Adept</name>
         <translate>Adepto Místico</translate>
         <altpage>69</altpage>
+        <altnameonpage>Adeptos Místicos</altnameonpage>
       </quality>
       <quality>
         <id>c4b35412-bd91-45b4-b428-29da7edd5ff4</id>
@@ -22886,8 +22907,9 @@
       <quality>
         <id>4adeb2d4-e42e-4b7a-9a5d-3df325ae59a5</id>
         <name>Aspected Magician</name>
-        <translate>Mago de Aspecto</translate>
+        <translate>Mago Aspectado</translate>
         <altpage>69</altpage>
+        <altnameonpage>Magos Aspectados</altnameonpage>
       </quality>
       <quality>
         <id>dea0e693-05c5-422d-bd1b-f1d1eac9cd30</id>
@@ -42458,8 +42480,8 @@
         <altpage>42</altpage>
         <choices>
           <choice>
-            <name>+2 dice on Assensing Tets</name>
-            <translate>+2 dice on Assensing Tets</translate>
+            <name>+2 dice on Assensing Tests</name>
+            <translate>+2 dice on Assensing Tests</translate>
           </choice>
           <choice>
             <name>+2 on Judge Intentions Tests</name>
@@ -42479,7 +42501,7 @@
         <id>e8e25c51-bca0-4647-b345-f7f1d7a06be3</id>
         <name>Dolphin</name>
         <translate>Dolphin</translate>
-        <altadvantage>All: +2 dice on Artisan skill tests or Pilot (Watercraft) skill tests (choose one)</altadvantage>
+        <altadvantage>All: +2 dice on Artisan skill tests or Pilot Watercraft skill tests (choose one)</altadvantage>
         <altdisadvantage>Followers are altruistic when it comes to helping people and cannot turn a blind eye to those who they believe deserve their help. It is difficult for them not to get involved when they see someone being bullied or obviously polluting the environment. If they see such a situation, it takes a Charisma + Willpower (3) Test for a follower of Dolphin not to intervene. If the job that the follower of Dolphin is on involves polluting the environment or becoming the bully/enforcer on those less deserving, then the follower loses 2 dice after each such deed until she atones. Atonement is up to the gamemaster but can involve time and money spent with charities.</altdisadvantage>
         <altpage>43</altpage>
         <choices>
@@ -42488,8 +42510,8 @@
             <translate>+2 dice on Artisan tests</translate>
           </choice>
           <choice>
-            <name>+2 on Pilot (Watercraft) Tests</name>
-            <translate>+2 on Pilot (Watercraft) Tests</translate>
+            <name>+2 on Pilot Watercraft Tests</name>
+            <translate>+2 on Pilot Watercraft Tests</translate>
           </choice>
           <choice set="2">
             <name>Magician: +2 for health spells, preparations, and spell rituals.</name>
@@ -42505,7 +42527,7 @@
         <id>cf290b67-e417-4cd6-a36e-d28f35bdc18d</id>
         <name>Whale</name>
         <translate>Whale</translate>
-        <altadvantage>All: +2 dice to Swimming or Pilot (Watercraft) skill tests (choose one)</altadvantage>
+        <altadvantage>All: +2 dice to Swimming or Pilot Watercraft skill tests (choose one)</altadvantage>
         <altdisadvantage>Because of their personal sense of ethics, followers of the whale must honor any agreement they enter into. This can be an oath to an organization or a verbal contract with a corporation. Failing to honor the contract or oath results in a loss of a point of Magic. The Whale mentor spirit understands if circumstances to complete the contract are out of the Awakened’s hands. For everything else, the follower can attempt to atone, but at the gamemaster’s discretion.</altdisadvantage>
         <altpage>43</altpage>
         <choices>
@@ -42514,8 +42536,8 @@
             <translate>+2 dice on Swimming tests</translate>
           </choice>
           <choice>
-            <name>+2 on Pilot (Watercraft) Tests</name>
-            <translate>+2 on Pilot (Watercraft) Tests</translate>
+            <name>+2 on Pilot Watercraft Tests</name>
+            <translate>+2 on Pilot Watercraft Tests</translate>
           </choice>
           <choice set="2">
             <name>Magician: +2 to Conjuring skill tests for spirits of water</name>
@@ -42531,7 +42553,7 @@
         <id>9ca5be05-1420-4592-81a5-1b59bb93545d</id>
         <name>Horse</name>
         <translate>Horse</translate>
-        <altadvantage>All: +2 dice to Running or Pilot Ground Craft) tests (choose one)</altadvantage>
+        <altadvantage>All: +2 dice to Running or Pilot Ground Craft tests (choose one)</altadvantage>
         <altdisadvantage>Followers of the Horse can’t sit still for long nor be confined indoors. They must spend at least four hours a day outside and be able to run or drive around (any method of travel faster than walking). If followers are not able to meet this condition, they suffer –1 die to all action skill tests. This penalty is cumulative, meaning if the follower is stuck at a desk all day (indoors and not moving around) for two days in a a row, they suffer –2 to all actions until they get that free time in.</altdisadvantage>
         <altpage>46</altpage>
         <choices>
@@ -42540,8 +42562,8 @@
             <translate>+2 dice on Running tests</translate>
           </choice>
           <choice>
-            <name>+2 on Pilot (Groundcraft) Tests</name>
-            <translate>+2 on Pilot (Groundcraft) Tests</translate>
+            <name>+2 on Pilot Ground Craft Tests</name>
+            <translate>+2 on Pilot Ground Craft Tests</translate>
           </choice>
           <choice set="2">
             <name>Magician: Reduce Drain Value from Reckless Summoning by 1</name>
@@ -42988,7 +43010,7 @@
         <name>Squirrel</name>
         <translate>Squirrel</translate>
         <altadvantage>All: +2 dice pool modifer for tests using the Gymnastics skill.</altadvantage>
-        <altdisadvantage>When followers of Squirrel are in confined spaces, they must make a Willpower + Chrisma (3) Tets or take a -1 dice pool modifier on all tests while feeling cramped.</altdisadvantage>
+        <altdisadvantage>When followers of Squirrel are in confined spaces, they must make a Willpower + Chrisma (3) Tests or take a -1 dice pool modifier on all tests while feeling cramped.</altdisadvantage>
         <altpage>121</altpage>
         <choices>
           <choice>
@@ -43144,12 +43166,12 @@
         <altpage>123</altpage>
         <choices>
           <choice>
-            <name>+2 dice on Pilot Ground Craft Tets</name>
-            <translate>+2 dice on Pilot Ground Craft Tets</translate>
+            <name>+2 dice on Pilot Ground Craft Tests</name>
+            <translate>+2 dice on Pilot Ground Craft Tests</translate>
           </choice>
           <choice>
-            <name>+2 dice on Intimidation Tets</name>
-            <translate>+2 dice on Intimidation Tets</translate>
+            <name>+2 dice on Intimidation Tests</name>
+            <translate>+2 dice on Intimidation Tests</translate>
           </choice>
           <choice set="2">
             <name>Magician: +2 dice summoning spirits of man.</name>

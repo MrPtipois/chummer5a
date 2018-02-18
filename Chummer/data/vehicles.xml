@@ -3662,6 +3662,7 @@
       <mods>
         <name>Standard Weapon Mount (Drone)</name>
       </mods>
+      <modslots>0</modslots>
       <weapons>
         <weapon>
           <name>Colt Cobra TZ-120</name>
@@ -3690,6 +3691,7 @@
           <maxrating>3</maxrating>
         </gear>
       </gears>
+      <modslots>0</modslots>
     </vehicle>
     <vehicle>
       <id>fcbe7bb4-6137-4939-8d4b-10b011b33ac6</id>
@@ -3884,6 +3886,7 @@
       <mods>
         <name>Small Weapon Mount (Drone)</name>
       </mods>
+      <modslots>0</modslots>
     </vehicle>
     <vehicle>
       <id>a836d6d5-56f3-416c-a53f-2249af400580</id>
@@ -3911,6 +3914,7 @@
         <name>Standard Weapon Mount (Drone)</name>
         <name>Immobile (Drone)</name>
       </mods>
+      <modslots>0</modslots>
     </vehicle>
     <vehicle>
       <id>68b2cf81-7fa0-4451-8096-96d9bd25c128</id>
@@ -4105,6 +4109,7 @@
           <maxrating>4</maxrating>
         </gear>
       </gears>
+      <modslots>0</modslots>
     </vehicle>
     <vehicle>
       <id>963d0596-c0f5-40d9-8bfe-580cc1150d20</id>
@@ -4128,6 +4133,7 @@
           <maxrating>3</maxrating>
         </gear>
       </gears>
+      <modslots>0</modslots>
     </vehicle>
     <vehicle>
       <id>6cef9ce0-b7b0-4d3c-933a-ef1da1580388</id>
@@ -4157,6 +4163,7 @@
       <mods>
         <name>Small Weapon Mount (Drone)</name>
       </mods>
+      <modslots>0</modslots>
     </vehicle>
     <vehicle>
       <id>75b5192e-6d57-4ca3-b288-c733c1272cef</id>
@@ -4184,6 +4191,7 @@
           </gears>
         </gear>
       </gears>
+      <modslots>0</modslots>
     </vehicle>
     <vehicle>
       <id>ec84a3e8-00f7-4558-b21c-62fff76c33c5</id>
@@ -4318,6 +4326,7 @@
           </gears>
         </gear>
       </gears>
+      <modslots>0</modslots>
     </vehicle>
     <vehicle>
       <id>2c2ab919-9432-4e0a-9f30-a8cc9d51f7fb</id>
@@ -4341,6 +4350,7 @@
           <maxrating>4</maxrating>
         </gear>
       </gears>
+      <modslots>0</modslots>
     </vehicle>
     <vehicle>
       <id>671e4bc0-bd06-4158-9515-2e353f2f6123</id>
@@ -4445,6 +4455,7 @@
       <mods>
         <name>Mini Weapon Mount (Drone)</name>
       </mods>
+      <modslots>0</modslots>
       <weapons>
         <weapon>
           <name>Yamaha Pulsar</name>
@@ -4565,6 +4576,7 @@
       <mods>
         <name>Tracked Propulsion</name>
       </mods>
+      <modslots>0</modslots>
     </vehicle>
     <vehicle>
       <id>18dbdb52-cb84-43d5-8d0e-15eb5a036556</id>
@@ -4650,6 +4662,7 @@
         <name>Submersible (Drone)</name>
         <name>Searchlight</name>
       </mods>
+      <modslots>0</modslots>
     </vehicle>
     <vehicle>
       <id>bc21264d-527c-4066-b8c6-0aa24cff61cb</id>
@@ -4679,6 +4692,7 @@
       <mods>
         <name>Standard Weapon Mount (Drone)</name>
       </mods>
+      <modslots>0</modslots>
     </vehicle>
     <vehicle>
       <id>70916e91-a7ee-477f-a4b0-14bc125c1034</id>
@@ -4707,6 +4721,7 @@
       <mods>
         <name>Heavy Weapon Mount (Drone)</name>
       </mods>
+      <modslots>0</modslots>
     </vehicle>
     <vehicle>
       <id>e4f82e1e-1bcb-4857-a693-80cea860150e</id>
@@ -4735,6 +4750,7 @@
       <mods>
         <name>Heavy Weapon Mount (Drone)</name>
       </mods>
+      <modslots>0</modslots>
     </vehicle>
     <vehicle>
       <id>83dae489-5d31-4d39-b6fa-aefc83b3ff20</id>
@@ -4766,6 +4782,7 @@
       <mods>
         <name>Large Weapon Mount (Drone)</name>
       </mods>
+      <modslots>0</modslots>
     </vehicle>
     <vehicle>
       <id>0f1b635b-59d8-4b43-b809-76eae7f0048c</id>
@@ -4820,6 +4837,7 @@
       <mods>
         <name>Heavy Weapon Mount (Drone)</name>
       </mods>
+      <modslots>0</modslots>
     </vehicle>
     <vehicle>
       <id>472a0869-4759-41cf-b529-a42b0f308f69</id>
@@ -6218,6 +6236,7 @@
           <maxrating>3</maxrating>
         </gear>
       </gears>
+      <modslots>0</modslots>
     </vehicle>
     <vehicle>
       <id>c8f7e6c0-85e6-4feb-9ef0-0aeca5fba76b</id>
@@ -9203,7 +9222,7 @@
       <id>bf1c4807-6f21-425c-aa1e-521ebf34ffe8</id>
       <name>Lone Star SecureSector Mk2</name>
       <page>40</page>
-      <source>TVG</source>
+      <source>TSG</source>
       <accel>2</accel>
       <armor>4</armor>
       <avail>10</avail>
@@ -11843,10 +11862,12 @@
       <cost>2500</cost>
       <slots>3</slots>
       <required>
-        <control>Manual [SR5]</control>
-        <control>Remote</control>
-        <flexibility>Fixed</flexibility>
-        <visibility>External</visibility>
+        <weaponmountdetails>
+          <control>Manual [SR5]</control>
+          <control>Remote</control>
+          <flexibility>Fixed</flexibility>
+          <visibility>External</visibility>
+        </weaponmountdetails>
       </required>
       <weaponcategories>Blades,Clubs,Exotic Melee Weapons,Crossbows,Tasers,Holdouts,Light Pistols,Heavy Pistols,Machine Pistols,Submachine Guns,Assault Rifles,Shotguns,Exotic Ranged Weapons,Flamethrowers,Special Weapons,Sporting Rifles</weaponcategories>
     </weaponmount>
@@ -11860,10 +11881,12 @@
       <cost>5000</cost>
       <slots>6</slots>
       <required>
-        <control>Manual [SR5]</control>
-        <control>Remote</control>
-        <flexibility>Fixed</flexibility>
-        <visibility>External</visibility>
+        <weaponmountdetails>
+          <control>Manual [SR5]</control>
+          <control>Remote</control>
+          <flexibility>Fixed</flexibility>
+          <visibility>External</visibility>
+        </weaponmountdetails>
       </required>
       <weaponcategories>Blades,Clubs,Exotic Melee Weapons,Crossbows,Tasers,Holdouts,Light Pistols,Heavy Pistols,Machine Pistols,Submachine Guns,Assault Rifles,Sniper Rifles,Shotguns,Grenade Launchers,Missile Launchers,Laser Weapons,Light Machine Guns,Medium Machine Guns,Heavy Machine Guns,Assault Cannons,Flamethrowers,Sporting Rifles,Exotic Ranged Weapons</weaponcategories>
     </weaponmount>
@@ -11877,7 +11900,12 @@
       <cost>750</cost>
       <slots>1</slots>
       <forbidden>
-        <control>Manual [SR5]</control>
+        <weaponmountdetails>
+          <control>Manual [SR5]</control>
+          <control>None</control>
+          <flexibility>None</flexibility>
+          <visibility>None</visibility>
+        </weaponmountdetails>
       </forbidden>
       <weaponcategories>Melee,Tasers,Holdouts,Light Pistols,Heavy Pistols,Machine Pistols,Submachine Guns</weaponcategories>
     </weaponmount>
@@ -11891,7 +11919,12 @@
       <cost>1500</cost>
       <slots>2</slots>
       <forbidden>
-        <control>Manual [SR5]</control>
+        <weaponmountdetails>
+          <control>Manual [SR5]</control>
+          <control>None</control>
+          <flexibility>None</flexibility>
+          <visibility>None</visibility>
+        </weaponmountdetails>
       </forbidden>
       <weaponcategories>Tasers,Holdouts,Light Pistols,Heavy Pistols,Assault Rifles,Sniper Rifles,Shotguns,Exotic Ranged Weapons,Flamethrowers,Special Weapons</weaponcategories>
     </weaponmount>
@@ -11905,7 +11938,12 @@
       <cost>4000</cost>
       <slots>4</slots>
       <forbidden>
-        <control>Manual [SR5]</control>
+        <weaponmountdetails>
+          <control>Manual [SR5]</control>
+          <control>None</control>
+          <flexibility>None</flexibility>
+          <visibility>None</visibility>
+        </weaponmountdetails>
       </forbidden>
       <weaponcategories>Tasers,Holdouts,Light Pistols,Heavy Pistols,Assault Rifles,Sniper Rifles,Shotguns,Exotic Ranged Weapons,Flamethrowers,Special Weapons,Light Machine Guns,Medium Machine Guns,Heavy Machine Guns,Assault Cannons,Grenade Launchers,Missile Launchers,Laser Weapons</weaponcategories>
     </weaponmount>
@@ -12187,6 +12225,11 @@
       <cost>0</cost>
       <optionaldrone />
       <slots>0</slots>
+      <required>
+        <vehicledetails>
+          <category operation="contains">Drones</category>
+        </vehicledetails>
+      </required>
     </weaponmount>
     <weaponmount>
       <id>c6939caa-e94d-4db3-94f6-a46fbcc4df07</id>
@@ -12198,6 +12241,11 @@
       <cost>0</cost>
       <optionaldrone />
       <slots>0</slots>
+      <required>
+        <vehicledetails>
+          <category operation="contains">Drones</category>
+        </vehicledetails>
+      </required>
     </weaponmount>
     <weaponmount>
       <id>b7333366-24bf-4f47-bb68-b1cfe8f450fd</id>
@@ -12209,6 +12257,11 @@
       <cost>0</cost>
       <optionaldrone />
       <slots>0</slots>
+      <required>
+        <vehicledetails>
+          <category operation="contains">Drones</category>
+        </vehicledetails>
+      </required>
     </weaponmount>
     <!-- End Region -->
   </weaponmounts>
@@ -12240,8 +12293,8 @@
       <source>R5</source>
       <avail>0</avail>
       <category>All</category>
-      <cost>Rating * 100</cost>
-      <rating>7</rating>
+      <cost>Slots * 100</cost>
+      <rating>0</rating>
       <slots>1</slots>
       <optionaldrone />
       <required>

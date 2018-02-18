@@ -33,8 +33,8 @@ namespace Chummer
         //private readonly int _intFullHeight = 156;
 
         // Events.
-        public EventHandler ContactDetailChanged { get; set; }
-        public EventHandler DeleteContact { get; set; }
+        public event TextEventHandler ContactDetailChanged;
+        public event EventHandler DeleteContact;
 
         #region Control Events
         public ContactControl(Contact objContact)
@@ -93,6 +93,14 @@ namespace Chummer
             }
 
             _blnLoading = false;
+        }
+
+        public void UnbindContactControl()
+        {
+            foreach (Control objControl in Controls)
+            {
+                objControl.DataBindings.Clear();
+            }
         }
 
         private void nudConnection_ValueChanged(object sender, EventArgs e)
@@ -168,7 +176,7 @@ namespace Chummer
         private void cboPersonalLife_TextChanged(object sender, EventArgs e)
         {
             if (!_blnLoading)
-                ContactDetailChanged?.Invoke(this, e);
+                ContactDetailChanged?.Invoke(this, new TextEventArgs("PersonalLife"));
         }
 
         private void cboType_TextChanged(object sender, EventArgs e)
@@ -252,7 +260,7 @@ namespace Chummer
             // Prompt the user to select a save file to associate with this Contact.
             OpenFileDialog openFileDialog = new OpenFileDialog
             {
-                Filter = "Chummer5 Files (*.chum5)|*.chum5|All Files (*.*)|*.*"
+                Filter = LanguageManager.GetString("DialogFilter_Chum5", GlobalOptions.Language) + '|' + LanguageManager.GetString("DialogFilter_All", GlobalOptions.Language)
             };
             if (!string.IsNullOrEmpty(_objContact.FileName) && File.Exists(_objContact.FileName))
             {
@@ -299,13 +307,16 @@ namespace Chummer
             };
             frmContactNotes.ShowDialog(this);
 
-            if (frmContactNotes.DialogResult == DialogResult.OK)
+            if (frmContactNotes.DialogResult == DialogResult.OK && _objContact.Notes != frmContactNotes.Notes)
+            {
                 _objContact.Notes = frmContactNotes.Notes;
 
-            string strTooltip = LanguageManager.GetString(_objContact.EntityType == ContactType.Enemy ? "Tip_Enemy_EditNotes" : "Tip_Contact_EditNotes", GlobalOptions.Language);
-            if (!string.IsNullOrEmpty(_objContact.Notes))
-                strTooltip += "\n\n" + _objContact.Notes;
-            tipTooltip.SetToolTip(imgNotes, strTooltip.WordWrap(100));
+                string strTooltip = LanguageManager.GetString(_objContact.EntityType == ContactType.Enemy ? "Tip_Enemy_EditNotes" : "Tip_Contact_EditNotes", GlobalOptions.Language);
+                if (!string.IsNullOrEmpty(_objContact.Notes))
+                    strTooltip += "\n\n" + _objContact.Notes;
+                tipTooltip.SetToolTip(imgNotes, strTooltip.WordWrap(100));
+                ContactDetailChanged?.Invoke(this, new TextEventArgs("Notes"));
+            }
         }
 
         private void chkFree_CheckedChanged(object sender, EventArgs e)
@@ -331,13 +342,7 @@ namespace Chummer
         /// <summary>
         /// Contact object this is linked to.
         /// </summary>
-        public Contact ContactObject
-        {
-            get
-            {
-                return _objContact;
-            }
-        }
+        public Contact ContactObject => _objContact;
 
         public bool Expanded
         {
@@ -360,16 +365,7 @@ namespace Chummer
                     cboContactRole.Text = strContactRole;
                 return;
             }
-
-            if (_objContact.ReadOnly)
-            {
-                chkFree.Enabled = chkGroup.Enabled =
-                nudConnection.Enabled = nudLoyalty.Enabled = false;
-
-                cmdDelete.Visible = false;
-            }
-
-
+            
             // Read the list of Categories from the XML file.
             List<ListItem> lstCategories = new List<ListItem>
             {
@@ -403,55 +399,85 @@ namespace Chummer
             {
                 ListItem.Blank
             };
+            
+            XmlNode xmlContactsBaseNode = XmlManager.Load("contacts.xml").SelectSingleNode("/chummer");
+            if (xmlContactsBaseNode != null)
+            {
+                using (XmlNodeList xmlNodeList = xmlContactsBaseNode.SelectNodes("contacts/contact"))
+                    if (xmlNodeList != null)
+                        foreach (XmlNode xmlNode in xmlNodeList)
+                        {
+                            string strName = xmlNode.InnerText;
+                            lstCategories.Add(new ListItem(strName, xmlNode.Attributes?["translate"]?.InnerText ?? strName));
+                        }
 
-            XmlDocument objXmlDocument = XmlManager.Load("contacts.xml");
-            foreach (XmlNode objXmlNode in objXmlDocument.SelectNodes("/chummer/contacts/contact"))
-            {
-                string strName = objXmlNode.InnerText;
-                lstCategories.Add(new ListItem(strName, objXmlNode.Attributes?["translate"]?.InnerText ?? strName));
+                using (XmlNodeList xmlNodeList = xmlContactsBaseNode.SelectNodes("sexes/sex"))
+                    if (xmlNodeList != null)
+                        foreach (XmlNode xmlNode in xmlNodeList)
+                        {
+                            string strName = xmlNode.InnerText;
+                            lstSexes.Add(new ListItem(strName, xmlNode.Attributes?["translate"]?.InnerText ?? strName));
+                        }
+
+                using (XmlNodeList xmlNodeList = xmlContactsBaseNode.SelectNodes("ages/age"))
+                    if (xmlNodeList != null)
+                        foreach (XmlNode xmlNode in xmlNodeList)
+                        {
+                            string strName = xmlNode.InnerText;
+                            lstAges.Add(new ListItem(strName, xmlNode.Attributes?["translate"]?.InnerText ?? strName));
+                        }
+
+                using (XmlNodeList xmlNodeList = xmlContactsBaseNode.SelectNodes("personallives/personallife"))
+                    if (xmlNodeList != null)
+                        foreach (XmlNode xmlNode in xmlNodeList)
+                        {
+                            string strName = xmlNode.InnerText;
+                            lstPersonalLives.Add(new ListItem(strName, xmlNode.Attributes?["translate"]?.InnerText ?? strName));
+                        }
+
+                using (XmlNodeList xmlNodeList = xmlContactsBaseNode.SelectNodes("types/type"))
+                    if (xmlNodeList != null)
+                        foreach (XmlNode xmlNode in xmlNodeList)
+                        {
+                            string strName = xmlNode.InnerText;
+                            lstTypes.Add(new ListItem(strName, xmlNode.Attributes?["translate"]?.InnerText ?? strName));
+                        }
+
+                using (XmlNodeList xmlNodeList = xmlContactsBaseNode.SelectNodes("preferredpayments/preferredpayment"))
+                    if (xmlNodeList != null)
+                        foreach (XmlNode xmlNode in xmlNodeList)
+                        {
+                            string strName = xmlNode.InnerText;
+                            lstPreferredPayments.Add(new ListItem(strName, xmlNode.Attributes?["translate"]?.InnerText ?? strName));
+                        }
+
+                using (XmlNodeList xmlNodeList = xmlContactsBaseNode.SelectNodes("hobbiesvices/hobbyvice"))
+                    if (xmlNodeList != null)
+                        foreach (XmlNode xmlNode in xmlNodeList)
+                        {
+                            string strName = xmlNode.InnerText;
+                            lstHobbiesVices.Add(new ListItem(strName, xmlNode.Attributes?["translate"]?.InnerText ?? strName));
+                        }
             }
-            foreach (XmlNode objXmlNode in objXmlDocument.SelectNodes("/chummer/sexes/sex"))
-            {
-                string strName = objXmlNode.InnerText;
-                lstSexes.Add(new ListItem(strName, objXmlNode.Attributes?["translate"]?.InnerText ?? strName));
-            }
-            foreach (XmlNode objXmlNode in objXmlDocument.SelectNodes("/chummer/ages/age"))
-            {
-                string strName = objXmlNode.InnerText;
-                lstAges.Add(new ListItem(strName, objXmlNode.Attributes?["translate"]?.InnerText ?? strName));
-            }
-            foreach (XmlNode objXmlNode in objXmlDocument.SelectNodes("/chummer/personallives/personallife"))
-            {
-                string strName = objXmlNode.InnerText;
-                lstPersonalLives.Add(new ListItem(strName, objXmlNode.Attributes?["translate"]?.InnerText ?? strName));
-            }
-            foreach (XmlNode objXmlNode in objXmlDocument.SelectNodes("/chummer/types/type"))
-            {
-                string strName = objXmlNode.InnerText;
-                lstTypes.Add(new ListItem(strName, objXmlNode.Attributes?["translate"]?.InnerText ?? strName));
-            }
-            foreach (XmlNode objXmlNode in objXmlDocument.SelectNodes("/chummer/preferredpayments/preferredpayment"))
-            {
-                string strName = objXmlNode.InnerText;
-                lstPreferredPayments.Add(new ListItem(strName, objXmlNode.Attributes?["translate"]?.InnerText ?? strName));
-            }
-            foreach (XmlNode objXmlNode in objXmlDocument.SelectNodes("/chummer/hobbiesvices/hobbyvice"))
-            {
-                string strName = objXmlNode.InnerText;
-                lstHobbiesVices.Add(new ListItem(strName, objXmlNode.Attributes?["translate"]?.InnerText ?? strName));
-            }
-            foreach (XmlNode xmlMetatypeNode in XmlManager.Load("metatypes.xml")?.SelectNodes("/chummer/metatypes/metatype"))
-            {
-                string strName = xmlMetatypeNode["name"].InnerText;
-                string strMetatypeDisplay = xmlMetatypeNode["translate"]?.InnerText ?? strName;
-                lstMetatypes.Add(new ListItem(strName, strMetatypeDisplay));
-                foreach (XmlNode objXmlMetavariantNode in xmlMetatypeNode.SelectNodes("metavariants/metavariant"))
-                {
-                    string strMetavariantName = objXmlMetavariantNode["name"].InnerText;
-                    if (lstMetatypes.All(x => x.Value.ToString() != strMetavariantName))
-                        lstMetatypes.Add(new ListItem(strMetavariantName, strMetatypeDisplay + " (" + (objXmlMetavariantNode["translate"]?.InnerText ?? strMetavariantName) + ')'));
-                }
-            }
+
+            using (XmlNodeList xmlMetatypeList = XmlManager.Load("metatypes.xml").SelectNodes("/chummer/metatypes/metatype"))
+                if (xmlMetatypeList != null)
+                    foreach (XmlNode xmlMetatypeNode in xmlMetatypeList)
+                    {
+                        string strName = xmlMetatypeNode["name"]?.InnerText;
+                        string strMetatypeDisplay = xmlMetatypeNode["translate"]?.InnerText ?? strName;
+                        lstMetatypes.Add(new ListItem(strName, strMetatypeDisplay));
+                        XmlNodeList xmlMetavariantList = xmlMetatypeNode.SelectNodes("metavariants/metavariant");
+                        if (xmlMetavariantList != null)
+                        {
+                            foreach (XmlNode objXmlMetavariantNode in xmlMetavariantList)
+                            {
+                                string strMetavariantName = objXmlMetavariantNode["name"]?.InnerText;
+                                if (lstMetatypes.All(x => x.Value.ToString() != strMetavariantName))
+                                    lstMetatypes.Add(new ListItem(strMetavariantName, strMetatypeDisplay + " (" + (objXmlMetavariantNode["translate"]?.InnerText ?? strMetavariantName) + ')'));
+                            }
+                        }
+                    }
 
             lstCategories.Sort(CompareListItems.CompareNames);
             lstMetatypes.Sort(CompareListItems.CompareNames);
@@ -513,11 +539,13 @@ namespace Chummer
 
         private void DoDataBindings()
         {
-            chkGroup.DataBindings.Add("Checked", _objContact, nameof(_objContact.IsGroupOrMadeMan), false,
+            chkGroup.DataBindings.Add("Checked", _objContact, nameof(_objContact.IsGroup), false,
                 DataSourceUpdateMode.OnPropertyChanged);
-            chkGroup.DataBindings.Add("Enabled", _objContact, nameof(_objContact.NotMadeMan), false,
+            chkGroup.DataBindings.Add("Enabled", _objContact, nameof(_objContact.GroupEnabled), false,
                 DataSourceUpdateMode.OnPropertyChanged);
             chkFree.DataBindings.Add("Checked", _objContact, nameof(_objContact.Free), false,
+                DataSourceUpdateMode.OnPropertyChanged);
+            chkFree.DataBindings.Add("Enabled", _objContact, nameof(_objContact.NotReadOnly), false,
                 DataSourceUpdateMode.OnPropertyChanged);
             chkFamily.DataBindings.Add("Checked", _objContact, nameof(_objContact.Family), false,
                 DataSourceUpdateMode.OnPropertyChanged);
@@ -534,6 +562,8 @@ namespace Chummer
             nudLoyalty.DataBindings.Add("Enabled", _objContact, nameof(_objContact.LoyaltyEnabled), false,
                 DataSourceUpdateMode.OnPropertyChanged);
             nudConnection.DataBindings.Add("Value", _objContact, nameof(_objContact.Connection), false,
+                DataSourceUpdateMode.OnPropertyChanged);
+            nudConnection.DataBindings.Add("Enabled", _objContact, nameof(_objContact.NotReadOnly), false,
                 DataSourceUpdateMode.OnPropertyChanged);
             nudConnection.DataBindings.Add("Maximum", _objContact, nameof(_objContact.ConnectionMaximum), false,
                 DataSourceUpdateMode.OnPropertyChanged);
@@ -557,7 +587,9 @@ namespace Chummer
                 DataSourceUpdateMode.OnPropertyChanged);
             cboHobbiesVice.DataBindings.Add("Text", _objContact, nameof(_objContact.DisplayHobbiesVice), false,
                 DataSourceUpdateMode.OnPropertyChanged);
-            this.DataBindings.Add("BackColor", _objContact, nameof(_objContact.Colour), false,
+            cmdDelete.DataBindings.Add("Visible", _objContact, nameof(_objContact.NotReadOnly), false,
+                DataSourceUpdateMode.OnPropertyChanged);
+            DataBindings.Add("BackColor", _objContact, nameof(_objContact.Colour), false,
                 DataSourceUpdateMode.OnPropertyChanged);
 
             // Properties controllable by the character themselves

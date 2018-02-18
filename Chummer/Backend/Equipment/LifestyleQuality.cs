@@ -21,10 +21,8 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
 using System.Linq;
-using System.Windows.Documents;
 using System.Windows.Forms;
 using System.Xml;
-using System.Xml.XPath;
 
 namespace Chummer.Backend.Equipment
 {
@@ -33,24 +31,24 @@ namespace Chummer.Backend.Equipment
         private Guid _guiID;
         private Guid _SourceGuid;
         private string _strName = string.Empty;
+        private string _strCategory = string.Empty;
         private string _strExtra = string.Empty;
         private string _strSource = string.Empty;
         private string _strPage = string.Empty;
         private string _strNotes = string.Empty;
         private bool _blnContributeToLimit = true;
         private bool _blnPrint = true;
-        private int _intLP = 0;
+        private int _intLP;
         private string _strCost = string.Empty;
-        private int _intMultiplier = 0;
-        private int _intBaseMultiplier = 0;
+        private int _intMultiplier;
+        private int _intBaseMultiplier;
         private List<string> _lstAllowedFreeLifestyles = new List<string>();
-        private Lifestyle _objParentLifestyle = null;
+        private Lifestyle _objParentLifestyle;
         private QualityType _objLifestyleQualityType = QualityType.Positive;
         private QualitySource _objLifestyleQualitySource = QualitySource.Selected;
         private XmlNode _nodBonus;
         private readonly Character _objCharacter;
         private bool _blnFree;
-        private string _strTooltipSource;
 
         #region Helper Methods
         /// <summary>
@@ -105,20 +103,23 @@ namespace Chummer.Backend.Equipment
         /// </summary>
         /// <param name="objXmlLifestyleQuality">XmlNode to create the object from.</param>
         /// <param name="objCharacter">Character object the LifestyleQuality will be added to.</param>
-        /// <param name="objLifestyleQualitySource">Source of the LifestyleQuality.</param
-        /// <param name="objNode">TreeNode to populate a TreeView.</param>
+        /// <param name="objParentLifestyle">Lifestyle object to which the LifestyleQuality will be added.</param>
+        /// <param name="objLifestyleQualitySource">Source of the LifestyleQuality.</param>
+        /// <param name="strExtra">Forced value for the LifestyleQuality's Extra string (also used by its bonus node).</param>
         public void Create(XmlNode objXmlLifestyleQuality, Lifestyle objParentLifestyle, Character objCharacter, QualitySource objLifestyleQualitySource, string strExtra = "")
         {
             _objParentLifestyle = objParentLifestyle;
-            _SourceGuid = Guid.Parse(objXmlLifestyleQuality["id"].InnerText);
+            objXmlLifestyleQuality.TryGetField("id", Guid.TryParse, out _SourceGuid);
             if (objXmlLifestyleQuality.TryGetStringFieldQuickly("name", ref _strName))
                 _objCachedMyXmlNode = null;
             objXmlLifestyleQuality.TryGetInt32FieldQuickly("lp", ref _intLP);
             objXmlLifestyleQuality.TryGetStringFieldQuickly("cost", ref _strCost);
             objXmlLifestyleQuality.TryGetInt32FieldQuickly("multiplier", ref _intMultiplier);
             objXmlLifestyleQuality.TryGetInt32FieldQuickly("multiplierbaseonly", ref _intBaseMultiplier);
-            if (objXmlLifestyleQuality["category"] != null)
-                _objLifestyleQualityType = ConvertToLifestyleQualityType(objXmlLifestyleQuality["category"].InnerText);
+            if (objXmlLifestyleQuality.TryGetStringFieldQuickly("category", ref _strCategory))
+            {
+                _objLifestyleQualityType = ConvertToLifestyleQualityType(_strCategory);
+            }
             _objLifestyleQualitySource = objLifestyleQualitySource;
             objXmlLifestyleQuality.TryGetBoolFieldQuickly("print", ref _blnPrint);
             objXmlLifestyleQuality.TryGetBoolFieldQuickly("contributetolimit", ref _blnContributeToLimit);
@@ -129,24 +130,31 @@ namespace Chummer.Backend.Equipment
             string strAllowedFreeLifestyles = string.Empty;
             if (objXmlLifestyleQuality.TryGetStringFieldQuickly("allowed", ref strAllowedFreeLifestyles))
                 _lstAllowedFreeLifestyles = strAllowedFreeLifestyles.Split(',').ToList();
-            if (strExtra.Contains('('))
+            _strExtra = strExtra;
+            int intParenthesesIndex = _strExtra.IndexOf('(');
+            if (intParenthesesIndex != -1)
             {
-                _strExtra = strExtra.Split('(')[1].TrimEnd(')');
+                _strExtra = intParenthesesIndex + 1 < strExtra.Length ? strExtra.Substring(intParenthesesIndex + 1).TrimEndOnce(')') : string.Empty;
             }
 
             // If the item grants a bonus, pass the information to the Improvement Manager.
-            if (objXmlLifestyleQuality.InnerXml.Contains("<bonus>"))
+            XmlNode xmlBonus = objXmlLifestyleQuality["bonus"];
+            if (xmlBonus != null)
             {
-                if (!ImprovementManager.CreateImprovements(objCharacter, Improvement.ImprovementSource.Quality, _guiID.ToString("D"), objXmlLifestyleQuality["bonus"], false, 1, DisplayNameShort(GlobalOptions.Language)))
+                string strOldFoced = ImprovementManager.ForcedValue;
+                if (!string.IsNullOrEmpty(_strExtra))
+                    ImprovementManager.ForcedValue = _strExtra;
+                if (!ImprovementManager.CreateImprovements(objCharacter, Improvement.ImprovementSource.Quality, InternalId, xmlBonus, false, 1, DisplayNameShort(GlobalOptions.Language)))
                 {
                     _guiID = Guid.Empty;
+                    ImprovementManager.ForcedValue = strOldFoced;
                     return;
                 }
                 if (!string.IsNullOrEmpty(ImprovementManager.SelectedValue))
                 {
                     _strExtra = ImprovementManager.SelectedValue;
-                    //objNode.Text += " (" + objImprovementManager.SelectedValue + ')';
                 }
+                ImprovementManager.ForcedValue = strOldFoced;
             }
 
             // Built-In Qualities appear as grey text to show that they cannot be removed.
@@ -166,10 +174,11 @@ namespace Chummer.Backend.Equipment
             objWriter.WriteElementString("id", _SourceGuid.ToString("D"));
             objWriter.WriteElementString("guid", _guiID.ToString("D"));
             objWriter.WriteElementString("name", _strName);
+            objWriter.WriteElementString("category", _strCategory);
             objWriter.WriteElementString("extra", _strExtra);
             objWriter.WriteElementString("cost", _strCost);
-            objWriter.WriteElementString("multiplier", _intMultiplier.ToString(CultureInfo.InvariantCulture));
-            objWriter.WriteElementString("basemultiplier", _intBaseMultiplier.ToString(CultureInfo.InvariantCulture));
+            objWriter.WriteElementString("multiplier", _intMultiplier.ToString(GlobalOptions.InvariantCultureInfo));
+            objWriter.WriteElementString("basemultiplier", _intBaseMultiplier.ToString(GlobalOptions.InvariantCultureInfo));
             objWriter.WriteElementString("lp", _intLP.ToString());
             objWriter.WriteElementString("contributetolimit", _blnContributeToLimit.ToString());
             objWriter.WriteElementString("print", _blnPrint.ToString());
@@ -191,6 +200,7 @@ namespace Chummer.Backend.Equipment
         /// Load the CharacterAttribute from the XmlNode.
         /// </summary>
         /// <param name="objNode">XmlNode to load.</param>
+        /// <param name="objParentLifestyle">Lifestyle object to which this LifestyleQuality belongs.</param>
         public void Load(XmlNode objNode, Lifestyle objParentLifestyle)
         {
             ParentLifestyle = objParentLifestyle;
@@ -199,7 +209,7 @@ namespace Chummer.Backend.Equipment
                 _objCachedMyXmlNode = null;
             if (!objNode.TryGetField("id", Guid.TryParse, out _SourceGuid))
             {
-                GetNode()?.TryGetField("id", Guid.TryParse, out _SourceGuid);
+                XmlManager.Load("lifestyles.xml").SelectSingleNode("/chummer/qualities/quality[name = \"" + _strName + "\"]")?.TryGetField("id", Guid.TryParse, out _SourceGuid);
             }
             objNode.TryGetStringFieldQuickly("extra", ref _strExtra);
             objNode.TryGetInt32FieldQuickly("lp", ref _intLP);
@@ -216,6 +226,10 @@ namespace Chummer.Backend.Equipment
 #else
             _objLifestyleQualitySource = QualitySource.Selected;
 #endif
+            if (!objNode.TryGetStringFieldQuickly("category", ref _strCategory))
+            {
+                _strCategory = GetNode()?["category"]?.InnerText ?? string.Empty;
+            }
             objNode.TryGetStringFieldQuickly("source", ref _strSource);
             objNode.TryGetStringFieldQuickly("page", ref _strPage);
             string strAllowedFreeLifestyles = string.Empty;
@@ -236,19 +250,20 @@ namespace Chummer.Backend.Equipment
         private void LegacyShim()
         {
             //Unstored Cost and LP values prior to 5.190.2 nightlies.
-            if (_objCharacter.LastSavedVersion <= Version.Parse("5.190.0"))
+            if (_objCharacter.LastSavedVersion <= new Version("5.190.0"))
             {
                 XmlDocument objXmlDocument = XmlManager.Load("lifestyles.xml");
-                XmlNode objLifestyleQualityNode = objXmlDocument.SelectSingleNode("/chummer/qualities/quality[id = \"" + _guiID + "\"]") ??
+                XmlNode objLifestyleQualityNode = GetNode() ??
                                                   objXmlDocument.SelectSingleNode("/chummer/qualities/quality[name = \"" + _strName + "\"]");
                 if (objLifestyleQualityNode == null)
                 {
                     List<ListItem> lstQualities = new List<ListItem>();
-                    foreach (XmlNode objNode in objXmlDocument.SelectNodes("/chummer/qualities/quality"))
-                    {
-                        string strName = objNode["name"].InnerText;
-                        lstQualities.Add(new ListItem(strName, objNode["translate"]?.InnerText ?? strName));
-                    }
+                    using (XmlNodeList xmlQualityList = objXmlDocument.SelectNodes("/chummer/qualities/quality"))
+                        if (xmlQualityList != null)
+                            foreach (XmlNode xmlNode in xmlQualityList)
+                            {
+                                lstQualities.Add(new ListItem(xmlNode["id"]?.InnerText, xmlNode["translate"]?.InnerText ?? xmlNode["name"]?.InnerText));
+                            }
                     frmSelectItem frmSelect = new frmSelectItem
                     {
                         GeneralItems = lstQualities,
@@ -258,7 +273,7 @@ namespace Chummer.Backend.Equipment
                     if (frmSelect.DialogResult == DialogResult.Cancel)
                         return;
 
-                    objLifestyleQualityNode = objXmlDocument.SelectSingleNode("/chummer/qualities/quality[name = \"" + frmSelect.SelectedItem + "\"]");
+                    objLifestyleQualityNode = objXmlDocument.SelectSingleNode("/chummer/qualities/quality[id = \"" + frmSelect.SelectedItem + "\"]");
                 }
                 int intTemp = 0;
                 string strTemp = string.Empty;
@@ -289,6 +304,8 @@ namespace Chummer.Backend.Equipment
         /// Print the object's XML to the XmlWriter.
         /// </summary>
         /// <param name="objWriter">XmlTextWriter to write with.</param>
+        /// <param name="objCulture">Culture in which to print.</param>
+        /// <param name="strLanguageToPrint">Language in which to print</param>
         public void Print(XmlTextWriter objWriter, CultureInfo objCulture, string strLanguageToPrint)
         {
             if (!_blnPrint) return;
@@ -301,9 +318,7 @@ namespace Chummer.Backend.Equipment
             string strLifestyleQualityType = Type.ToString();
             if (strLanguageToPrint != GlobalOptions.DefaultLanguage)
             {
-                XmlDocument objXmlDocument = XmlManager.Load("lifestyles.xml", strLanguageToPrint);
-
-                XmlNode objNode = objXmlDocument?.SelectSingleNode("/chummer/categories/category[. = \"" + strLifestyleQualityType + "\"]");
+                XmlNode objNode = XmlManager.Load("lifestyles.xml", strLanguageToPrint).SelectSingleNode("/chummer/categories/category[. = \"" + strLifestyleQualityType + "\"]");
                 strLifestyleQualityType = objNode?.Attributes?["translate"]?.InnerText ?? strLifestyleQualityType;
             }
             objWriter.WriteElementString("lifestylequalitytype", strLifestyleQualityType);
@@ -368,19 +383,7 @@ namespace Chummer.Backend.Equipment
             get => _strSource;
             set => _strSource = value;
         }
-
-        public string SourceTooltip
-        {
-            get
-            {
-                if (!string.IsNullOrWhiteSpace(_strTooltipSource)) return _strTooltipSource;
-                XmlDocument objBookDocument = XmlManager.Load("books.xml");
-                XmlNode objXmlBook = objBookDocument.SelectSingleNode("/chummer/books/book[code = \"" + _strSource + "\"]");
-                _strTooltipSource = $"{objXmlBook["name"].InnerText} {LanguageManager.GetString("String_Page", GlobalOptions.Language)} {Page(GlobalOptions.Language)}";
-                return _strTooltipSource;
-            }
-        }
-
+        
         /// <summary>
         /// Page Number.
         /// </summary>
@@ -499,14 +502,9 @@ namespace Chummer.Backend.Equipment
                     return 0;
                 if (!decimal.TryParse(_strCost, NumberStyles.Any, GlobalOptions.InvariantCultureInfo, out decimal decReturn))
                 {
-                    try
-                    {
-                        decReturn = Convert.ToDecimal(CommonFunctions.EvaluateInvariantXPath(_strCost));
-                    }
-                    catch (XPathException)
-                    {
-                        decReturn = 0.0m;
-                    }
+                    object objProcess = CommonFunctions.EvaluateInvariantXPath(_strCost, out bool blnIsSuccess);
+                    if (blnIsSuccess)
+                        return Convert.ToDecimal(objProcess);
                 }
                 return decReturn;
             }
@@ -607,7 +605,11 @@ namespace Chummer.Backend.Equipment
         /// <summary>
         /// Category of the Quality. 
         /// </summary>
-        public string Category { get; set; }
+        public string Category
+        {
+            get => _strCategory;
+            set => _strCategory = value;
+        }
 
         /// <summary>
         /// Area/Neighborhood LP Cost/Benefit of the Quality.
@@ -634,7 +636,7 @@ namespace Chummer.Backend.Equipment
         private int _comfortMaximum;
         private int _securityMaximum;
 
-        private XmlNode _objCachedMyXmlNode = null;
+        private XmlNode _objCachedMyXmlNode;
         private string _strCachedXmlNodeLanguage = string.Empty;
 
         public XmlNode GetNode()
@@ -646,7 +648,7 @@ namespace Chummer.Backend.Equipment
         {
             if (_objCachedMyXmlNode == null || strLanguage != _strCachedXmlNodeLanguage || GlobalOptions.LiveCustomData)
             {
-                _objCachedMyXmlNode = XmlManager.Load("lifestyles.xml", strLanguage)?.SelectSingleNode("/chummer/qualities/quality[name = \"" + Name + "\"]");
+                _objCachedMyXmlNode = XmlManager.Load("lifestyles.xml", strLanguage).SelectSingleNode("/chummer/qualities/quality[id = \"" + SourceID + "\"]");
                 _strCachedXmlNodeLanguage = strLanguage;
             }
             return _objCachedMyXmlNode;
@@ -656,6 +658,9 @@ namespace Chummer.Backend.Equipment
         #region Methods
         public TreeNode CreateTreeNode()
         {
+            if (_objLifestyleQualitySource == QualitySource.BuiltIn && !string.IsNullOrEmpty(Source) && !_objCharacter.Options.BookEnabled(Source))
+                return null;
+
             TreeNode objNode = new TreeNode
             {
                 Name = InternalId,

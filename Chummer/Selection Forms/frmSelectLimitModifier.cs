@@ -16,14 +16,8 @@
  *  You can obtain the full source code for Chummer5a at
  *  https://github.com/chummer5a/chummer5a
  */
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Windows.Forms;
+ using System;
+ using System.Windows.Forms;
 
 namespace Chummer
 {
@@ -59,12 +53,12 @@ namespace Chummer
             DialogResult = DialogResult.Cancel;
         }
 
-        private void frmSelectText_Shown(object sender, EventArgs e)
+        private void frmSelectLimitModifier_Load(object sender, EventArgs e)
         {
             // If the field is pre-populated, immediately click OK.
             if (!string.IsNullOrEmpty(txtName.Text))
                 cmdOK_Click(sender, e);
-        }        
+        }
         #endregion
 
         #region Properties
@@ -73,14 +67,8 @@ namespace Chummer
         /// </summary>
         public string SelectedName
         {
-            get
-            {
-                return _strReturnName;
-            }
-            set
-            {
-                txtName.Text = value;
-            }
+            get => _strReturnName;
+            set => txtName.Text = value;
         }
 
         /// <summary>
@@ -88,14 +76,8 @@ namespace Chummer
         /// </summary>
         public string SelectedCondition
         {
-            get
-            {
-                return _strCondition;
-            }
-            set
-            {
-                txtCondition.Text = value;
-            }
+            get => _strCondition;
+            set => txtCondition.Text = value;
         }
 
         /// <summary>
@@ -103,17 +85,10 @@ namespace Chummer
         /// </summary>
         public int SelectedBonus
         {
-            get
-            {
-                return _intBonus;
-            }
-            set
-            {
-                nudBonus.Value = value;
-            }
+            get => _intBonus;
+            set => nudBonus.Value = value;
         }
 
         #endregion
-
     }
 }

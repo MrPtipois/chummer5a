@@ -827,6 +827,7 @@
       </forbidden>
       <source>SR5</source>
       <page>69</page>
+      <nameonpage>Magicians</nameonpage>
     </quality>
     <quality>
       <id>55247bdc-c313-4614-ae15-5012308096ff</id>
@@ -858,6 +859,7 @@
       </forbidden>
       <source>SR5</source>
       <page>69</page>
+      <nameonpage>Adepts</nameonpage>
     </quality>
     <quality>
       <id>9d53e1e4-3f31-40cb-bfbe-4b94f5ba757e</id>
@@ -890,6 +892,7 @@
       </forbidden>
       <source>SR5</source>
       <page>69</page>
+      <nameonpage>Mystic Adepts</nameonpage>
     </quality>
     <quality>
       <id>c4b35412-bd91-45b4-b428-29da7edd5ff4</id>
@@ -958,6 +961,7 @@
       </forbidden>
       <source>SR5</source>
       <page>69</page>
+      <nameonpage>Aspected Magicians</nameonpage>
     </quality>
     <quality>
       <id>dea0e693-05c5-422d-bd1b-f1d1eac9cd30</id>
@@ -1037,7 +1041,10 @@
       <bonus>
         <notoriety>1</notoriety>
         <selecttext />
-        <sociallimit>-3</sociallimit>
+        <skillcategory>
+          <name>Social Active</name>
+          <bonus>-3</bonus>
+        </skillcategory>
       </bonus>
       <source>SR5</source>
       <page>78</page>
@@ -2595,6 +2602,16 @@
           <min>3</min>
           <condition>career</condition>
         </skillcategorykarmacost>
+        <skillcategorykarmacostmultiplier>
+          <name>Academic</name>
+          <val>50</val>
+          <condition>create</condition>
+        </skillcategorykarmacostmultiplier>
+        <skillcategoryspecializationkarmacostmultiplier>
+          <name>Academic</name>
+          <val>50</val>
+          <condition>create</condition>
+        </skillcategoryspecializationkarmacostmultiplier>
         <skillcategorypointcostmultiplier>
           <name>Academic</name>
           <val>50</val>
@@ -2893,9 +2910,9 @@
       <bonus>
         <mademan />
         <selectcontact>
-          <forceloyalty />
-          <loyalty>3</loyalty>
+          <forcedloyalty>3</forcedloyalty>
           <type>group</type>
+          <free />
         </selectcontact>
       </bonus>
       <source>RF</source>
@@ -2984,8 +3001,63 @@
     </quality>
     <quality>
       <id>c15df7f5-2108-4be2-9500-86045221be0a</id>
-      <name>Rank</name>
-      <karma>Variable(5-30)</karma>
+      <name>Rank (Neither Military nor Law Enforcement) I</name>
+      <karma>5</karma>
+      <category>Positive</category>
+      <bonus>
+        <selecttext />
+      </bonus>
+      <source>RF</source>
+      <page>86</page>
+    </quality>
+    <quality>
+      <id>53bd1804-1029-4ebe-9464-a82d91be5dd9</id>
+      <name>Rank (Neither Military nor Law Enforcement) II</name>
+      <karma>10</karma>
+      <category>Positive</category>
+      <bonus>
+        <selecttext />
+      </bonus>
+      <source>RF</source>
+      <page>86</page>
+    </quality>
+    <quality>
+      <id>fe414583-aa74-4a50-8132-27887ec341d6</id>
+      <name>Rank (Neither Military nor Law Enforcement) III</name>
+      <karma>15</karma>
+      <category>Positive</category>
+      <bonus>
+        <selecttext />
+      </bonus>
+      <source>RF</source>
+      <page>86</page>
+    </quality>
+    <quality>
+      <id>49a9c3a8-538a-4d4e-a4e8-8bf837687d25</id>
+      <name>Rank (Military or Law Enforcement) I</name>
+      <karma>20</karma>
+      <category>Positive</category>
+      <bonus>
+        <selecttext />
+      </bonus>
+      <source>RF</source>
+      <page>86</page>
+    </quality>
+    <quality>
+      <id>6ccdc691-30cb-40f0-a283-6321703b018f</id>
+      <name>Rank (Military or Law Enforcement) II</name>
+      <karma>25</karma>
+      <category>Positive</category>
+      <bonus>
+        <selecttext />
+      </bonus>
+      <source>RF</source>
+      <page>86</page>
+    </quality>
+    <quality>
+      <id>aa9fbb62-1c5c-4c4f-acfd-34880cf61600</id>
+      <name>Rank (Military or Law Enforcement) III</name>
+      <karma>30</karma>
       <category>Positive</category>
       <bonus>
         <selecttext />
@@ -10522,9 +10594,9 @@
       <category>Positive</category>
       <bonus>
         <addcontact>
-          <loyalty>3</loyalty>
           <connection>5</connection>
-          <forceloyalty />
+          <loyalty>1</loyalty>
+          <forcedloyalty>3</forcedloyalty>
           <free />
           <group />
         </addcontact>
@@ -13348,7 +13420,7 @@
       <doublecareer>False</doublecareer>
       <bonus>
         <freespells skill="Spellcasting" />
-        <newspellkarmacost>-1</newspellkarmacost>
+        <newspellkarmacost type="Spells">-1</newspellkarmacost>
       </bonus>
       <required>
         <allof>
@@ -13618,6 +13690,10 @@
           </attribute>
         </allof>
         <oneof>
+          <skill>
+            <name>Spellcasting</name>
+            <val>6</val>
+          </skill>
           <skill>
             <name>Spellcasting</name>
             <val>4</val>
@@ -13905,7 +13981,7 @@
           <group>
             <skill>
               <name>Alchemy</name>
-              <val>6</val>
+              <val>4</val>
             </skill>
             <tradition>Islam</tradition>
           </group>

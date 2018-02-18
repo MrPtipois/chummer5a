@@ -13,9 +13,10 @@ namespace Chummer
         /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
-            if (disposing && (components != null))
+            if (disposing)
             {
-                components.Dispose();
+                components?.Dispose();
+                toolTip1?.Dispose();
             }
             base.Dispose(disposing);
         }
@@ -225,6 +226,7 @@ namespace Chummer
             this.lblMaxNuyen.Size = new System.Drawing.Size(70, 29);
             this.lblMaxNuyen.TabIndex = 15;
             this.lblMaxNuyen.Text = "Nuyen Karma Max";
+            this.lblMaxNuyen.Tag = "Label_SelectBP_MaxNuyen";
             this.lblMaxNuyen.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
             // 
             // frmSelectBuildMethod

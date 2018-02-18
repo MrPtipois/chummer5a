@@ -21,7 +21,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
-using System.Linq;
 using System.Windows.Forms;
 using Chummer.Backend.Skills;
 using Chummer.Backend.Attributes;
@@ -34,6 +33,7 @@ namespace Chummer.UI.Skills
         private readonly Skill _skill;
         private readonly Font _normal;
         private readonly Font _italic;
+        private readonly Font _italicName;
         private CharacterAttrib _attributeActive;
 
         public SkillControl2(Skill skill)
@@ -52,7 +52,8 @@ namespace Chummer.UI.Skills
             //Display
             if (!skill.Default)
             {
-                lblName.Font = new Font(lblName.Font, FontStyle.Italic);
+                _italicName = new Font(lblName.Font, FontStyle.Italic);
+                lblName.Font = _italicName;
             }
             if (!string.IsNullOrWhiteSpace(_skill.Notes))
             {
@@ -60,10 +61,9 @@ namespace Chummer.UI.Skills
             }
 
             lblName.DataBindings.Add("Text", skill, nameof(Skill.DisplayName));
-
-            skill.PropertyChanged += Skill_PropertyChanged;
-            skill.CharacterObject.AttributeSection.AttributeCategoryChanged += AttributeCategoryOnPropertyChanged;
             _attributeActive = skill.AttributeObject;
+            _skill.PropertyChanged += Skill_PropertyChanged;
+            _skill.CharacterObject.AttributeSection.PropertyChanged += AttributeSection_PropertyChanged;
             Skill_PropertyChanged(null, null);  //if null it updates all
             _normal = btnAttribute.Font;
             _italic = new Font(_normal, FontStyle.Italic);
@@ -83,9 +83,9 @@ namespace Chummer.UI.Skills
 
                 cboSpec.Visible = false;
                 btnAddSpec.DataBindings.Add("Enabled", skill, nameof(Skill.CanAffordSpecialization), false, DataSourceUpdateMode.OnPropertyChanged);
-
-                lblCareerSpec.DataBindings.Add("Text", skill, nameof(Skill.DisplaySpecialization), false, DataSourceUpdateMode.OnPropertyChanged);
+                
                 lblCareerSpec.Visible = true;
+                lblCareerSpec.DataBindings.Add("Text", skill, nameof(Skill.DisplaySpecialization), false, DataSourceUpdateMode.OnPropertyChanged);
 
                 lblAttribute.Visible = false;  //Was true, cannot think it should be
 
@@ -101,6 +101,7 @@ namespace Chummer.UI.Skills
                 nudKarma.DataBindings.Add("Value", skill, nameof(Skill.Karma), false, DataSourceUpdateMode.OnPropertyChanged);
                 nudSkill.DataBindings.Add("Value", skill, nameof(Skill.Base), false, DataSourceUpdateMode.OnPropertyChanged);
 
+                nudSkill.DataBindings.Add("Visible", skill.CharacterObject, nameof(skill.CharacterObject.BuildMethodHasSkillPoints), false, DataSourceUpdateMode.OnPropertyChanged);
                 nudSkill.DataBindings.Add("Enabled", skill, nameof(Skill.BaseUnlocked), false,
                     DataSourceUpdateMode.OnPropertyChanged);
                 nudSkill.DataBindings.Add("InterceptMouseWheel", skill.CharacterObject.Options, nameof(CharacterOptions.InterceptMode), false, 
@@ -109,16 +110,10 @@ namespace Chummer.UI.Skills
                     DataSourceUpdateMode.OnPropertyChanged);
                 nudKarma.DataBindings.Add("InterceptMouseWheel", skill.CharacterObject.Options, nameof(CharacterOptions.InterceptMode), false, 
                     DataSourceUpdateMode.OnPropertyChanged);
-                if (skill.CharacterObject.BuildMethod.HaveSkillPoints())
-                {
-                    chkKarma.DataBindings.Add("Checked", skill, nameof(Skill.BuyWithKarma), false,
-                        DataSourceUpdateMode.OnPropertyChanged);
-                    chkKarma.DataBindings.Add("Enabled", skill, nameof(Skill.CanHaveSpecs), false, DataSourceUpdateMode.OnPropertyChanged);
-                }
-                else
-                {
-                    chkKarma.Visible = false;
-                }
+
+                chkKarma.DataBindings.Add("Visible", skill.CharacterObject, nameof(skill.CharacterObject.BuildMethodHasSkillPoints), false, DataSourceUpdateMode.OnPropertyChanged);
+                chkKarma.DataBindings.Add("Checked", skill, nameof(Skill.BuyWithKarma), false, DataSourceUpdateMode.OnPropertyChanged);
+                chkKarma.DataBindings.Add("Enabled", skill, nameof(Skill.CanHaveSpecs), false, DataSourceUpdateMode.OnPropertyChanged);
 
                 cboSpec.BeginUpdate();
                 if (skill.IsExoticSkill)
@@ -145,7 +140,12 @@ namespace Chummer.UI.Skills
             if (skill.AllowDelete)
             {
                 cmdDelete.Visible = true;
-                cmdDelete.Click += (sender, args) => { skill.CharacterObject.SkillsSection.Skills.Remove(skill); skill.CharacterObject.SkillsSection.SkillsDictionary.Remove(skill.IsExoticSkill ? skill.Name + " (" + skill.DisplaySpecializationMethod(GlobalOptions.Language) + ')' : skill.Name); };
+                cmdDelete.Click += (sender, args) =>
+                {
+                    skill.UnbindSkill();
+                    skill.CharacterObject.SkillsSection.Skills.Remove(skill);
+                    skill.CharacterObject.SkillsSection.SkillsDictionary.Remove(skill.IsExoticSkill ? skill.Name + " (" + skill.DisplaySpecializationMethod(GlobalOptions.Language) + ')' : skill.Name);
+                };
 
                 if (skill.CharacterObject.Created)
                 {
@@ -156,13 +156,16 @@ namespace Chummer.UI.Skills
             ResumeLayout();
         }
 
-        private void AttributeCategoryOnPropertyChanged(object obj)
+        private void AttributeSection_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            _attributeActive.PropertyChanged -= AttributeActiveOnPropertyChanged;
-            _attributeActive = _skill.CharacterObject.GetAttribute((string)cboSelectAttribute.SelectedValue);
+            if (e.PropertyName == nameof(AttributeSection.AttributeCategory))
+            {
+                _attributeActive.PropertyChanged -= AttributeActiveOnPropertyChanged;
+                _attributeActive = _skill.CharacterObject.GetAttribute((string)cboSelectAttribute.SelectedValue);
 
-            _attributeActive.PropertyChanged += AttributeActiveOnPropertyChanged;
-            AttributeActiveOnPropertyChanged(null, null);
+                _attributeActive.PropertyChanged += AttributeActiveOnPropertyChanged;
+                AttributeActiveOnPropertyChanged(sender, e);
+            }
         }
 
         private void Skill_PropertyChanged(object sender, PropertyChangedEventArgs propertyChangedEventArgs)
@@ -212,8 +215,7 @@ namespace Chummer.UI.Skills
 
                 case nameof(Skill.Rating):
                 case nameof(Skill.Specialization):
-                    lblModifiedRating.Text =
-                        _skill.DisplayOtherAttribue(_attributeActive.TotalValue);
+                    lblModifiedRating.Text =  _skill.DisplayOtherAttribute(_attributeActive.TotalValue, _attributeActive.Abbrev);
                     break;
             }
         }
@@ -266,9 +268,6 @@ namespace Chummer.UI.Skills
 
             _skill.AddSpecialization(selectForm.SelectedItem);
 
-            //TODO turn this into a databinding, but i don't care enough right now
-            lblCareerSpec.Text = string.Join(", ", _skill.Specializations.Select(x => x.DisplayName(GlobalOptions.Language)));
-
             if (ParentForm is CharacterShared frmParent)
                 frmParent.IsCharacterUpdateRequested = true;
         }
@@ -317,6 +316,9 @@ namespace Chummer.UI.Skills
 
         public bool CustomAttributeSet => _attributeActive != _skill.AttributeObject;
 
+        public int NameWidth => lblName.PreferredWidth;
+        public int NudSkillWidth => nudSkill.Width;
+
         public void ResetSelectAttribute()
         {
             if (CustomAttributeSet)
@@ -352,7 +354,7 @@ namespace Chummer.UI.Skills
 
         private void AttributeActiveOnPropertyChanged(object sender, PropertyChangedEventArgs propertyChangedEventArgs)
         {
-            Skill_PropertyChanged(null, new PropertyChangedEventArgs(nameof(Skill.Rating)));
+            Skill_PropertyChanged(sender, new PropertyChangedEventArgs(nameof(Skill.Rating)));
         }
         
         private void lblName_Click(object sender, EventArgs e)
@@ -375,5 +377,32 @@ namespace Chummer.UI.Skills
             cboSpec_TextChanged(sender, e);
         }
         */
+        public void MoveControls(int i)
+        {
+            lblName.Width = i;
+            if (_skill.CharacterObject.Created)
+            {
+                btnAttribute.Left = lblName.Right + 6;
+                cboSelectAttribute.Left = lblName.Right + 6;
+                lblCareerRating.Left = cboSelectAttribute.Right + 6;
+            }
+            else
+            {
+                nudSkill.Left = lblName.Right + 6;
+                nudKarma.Left = nudSkill.Right + 6;
+                lblAttribute.Left = nudKarma.Right + 6;
+            }
+        }
+
+        public void UnbindSkillControl()
+        {
+            _skill.PropertyChanged -= Skill_PropertyChanged;
+            _skill.CharacterObject.AttributeSection.PropertyChanged -= AttributeSection_PropertyChanged;
+
+            foreach (Control objControl in Controls)
+            {
+                objControl.DataBindings.Clear();
+            }
+        }
     }
 }

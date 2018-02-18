@@ -16,8 +16,11 @@ namespace Translator
         private static readonly TextInfo s_ObjEnUSTextInfo = (new CultureInfo("en-US", false)).TextInfo;
         private static readonly string PATH = Application.StartupPath;
         private readonly BackgroundWorker _workerDataProcessor = new BackgroundWorker();
+        private bool _blnQueueDataProcessorRun;
         private readonly BackgroundWorker _workerStringsProcessor = new BackgroundWorker();
+        private bool _blnQueueStringsProcessorRun;
         private string _strLanguageToLoad = string.Empty;
+        private readonly string[] _astrArgs = new string[2];
         private static readonly List<frmTranslate> s_LstOpenTranslateWindows = new List<frmTranslate>();
 
         public frmTranslatorMain()
@@ -36,6 +39,20 @@ namespace Translator
             _workerStringsProcessor.WorkerSupportsCancellation = true;
             _workerStringsProcessor.DoWork += DoStringsProcessing;
             _workerStringsProcessor.RunWorkerCompleted += FinishStringsProcessing;
+        }
+
+        private void RunQueuedWorkers(object sender, EventArgs e)
+        {
+            if (_blnQueueDataProcessorRun)
+            {
+                if (!_workerDataProcessor.IsBusy)
+                    _workerDataProcessor.RunWorkerAsync();
+            }
+            if (_blnQueueStringsProcessorRun)
+            {
+                if (!_workerStringsProcessor.IsBusy)
+                    _workerStringsProcessor.RunWorkerAsync();
+            }
         }
 
         #region Control Events
@@ -139,12 +156,12 @@ namespace Translator
         {
             if (txtLanguageCode.TextLength != 2)
             {
-                MessageBox.Show("You must provide a two characters for the language code.");
+                MessageBox.Show("You must provide a two-character language code.");
                 return;
             }
             if (txtRegionCode.TextLength != 2)
             {
-                MessageBox.Show("You must provide a two character for the region code.");
+                MessageBox.Show("You must provide a two-character region code.");
                 return;
             }
             string strLowerCode = txtLanguageCode.Text.ToLower() + '-' + txtRegionCode.Text.ToLower();
@@ -232,7 +249,8 @@ namespace Translator
             }
 
             _strLanguageToLoad = s_ObjEnUSTextInfo.ToTitleCase(txtLanguageName.Text) + " (" + txtLanguageCode.Text.ToLower() + '-' + txtRegionCode.Text.ToUpper() + ')';
-            string[] strArgs = { strLowerCode, _strLanguageToLoad };
+            _astrArgs[0] = strLowerCode;
+            _astrArgs[1] = _strLanguageToLoad;
 
             if (_workerDataProcessor.IsBusy)
                 _workerDataProcessor.CancelAsync();
@@ -241,8 +259,8 @@ namespace Translator
 
             cmdCancel.Enabled = true;
 
-            _workerDataProcessor.RunWorkerAsync(strArgs);
-            _workerStringsProcessor.RunWorkerAsync(strArgs);
+            _blnQueueStringsProcessorRun = true;
+            _blnQueueDataProcessorRun = true;
         }
 
         private void cmdEdit_Click(object sender, EventArgs e)
@@ -280,7 +298,8 @@ namespace Translator
                 s_LstOpenTranslateWindows.Remove(frmOpenTranslate);
             }
 
-            string[] strArgs = { cboLanguages.Text.Substring(cboLanguages.Text.IndexOf('(') + 1, 5).ToLower(), _strLanguageToLoad };
+            _astrArgs[0] = cboLanguages.Text.Substring(cboLanguages.Text.IndexOf('(') + 1, 5).ToLower();
+            _astrArgs[1] = _strLanguageToLoad;
 
             if (_workerDataProcessor.IsBusy)
                 _workerDataProcessor.CancelAsync();
@@ -289,17 +308,31 @@ namespace Translator
 
             cmdCancel.Enabled = true;
 
-            _workerDataProcessor.RunWorkerAsync(strArgs);
-            _workerStringsProcessor.RunWorkerAsync(strArgs);
+            _blnQueueStringsProcessorRun = true;
+            _blnQueueDataProcessorRun = true;
         }
 
-        private void frmMain_Load(object sender, EventArgs e)
+        private void frmTranslatorMain_Load(object sender, EventArgs e)
         {
             LoadLanguageList();
+
+            Application.Idle += RunQueuedWorkers;
+        }
+
+        private void frmTranslatorMain_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            Application.Idle -= RunQueuedWorkers;
+            
+            if (_workerStringsProcessor.IsBusy)
+                _workerStringsProcessor.CancelAsync();
+            if (_workerDataProcessor.IsBusy)
+                _workerDataProcessor.CancelAsync();
         }
 
         private void cmdCancel_Click(object sender, EventArgs e)
         {
+            _blnQueueStringsProcessorRun = false;
+            _blnQueueDataProcessorRun = false;
             if (_workerDataProcessor.IsBusy)
                 _workerDataProcessor.CancelAsync();
             if (_workerStringsProcessor.IsBusy)
@@ -333,13 +366,11 @@ namespace Translator
                     {
                         MessageBox.Show("An error was encountered while trying to restore the original translation files. Cancellation may not have been completely successful.",
                             "Backup Restoration Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        return;
                     }
                     catch (UnauthorizedAccessException)
                     {
                         MessageBox.Show("An error was encountered while trying to restore the original translation files. Cancellation may not have been completely successful.",
                             "Backup Restoration Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        return;
                     }
                 }
             }
@@ -395,11 +426,11 @@ namespace Translator
             }
         }
 
-        private Tuple<XmlDocument, string> _objStringsDocWithPath = null;
+        private Tuple<XmlDocument, string> _objStringsDocWithPath;
         private void DoStringsProcessing(object sender, DoWorkEventArgs e)
         {
-            string[] strArgs = e.Argument as string[];
-            string strFilePath = Path.Combine(PATH, "lang", strArgs[0] + ".xml");
+            _blnQueueStringsProcessorRun = false;
+            string strFilePath = Path.Combine(PATH, "lang", _astrArgs[0] + ".xml");
 
             XmlDocument objDoc = new XmlDocument();
             if (File.Exists(strFilePath))
@@ -415,7 +446,7 @@ namespace Translator
             if (xmlNameNode == null)
             {
                 xmlNameNode = objDoc.CreateElement("name");
-                xmlNameNode.InnerText = strArgs[1];
+                xmlNameNode.InnerText = _astrArgs[1];
                 xmlRootChummerNode.AppendChild(xmlNameNode);
             }
             else
@@ -442,29 +473,32 @@ namespace Translator
             {
                 try
                 {
-
-                    foreach (XmlNode xmlStringNode in xmlStringsNode.SelectNodes("string"))
-                    {
-                        if (_workerStringsProcessor.CancellationPending)
-                            break;
-                        string strKey = xmlStringNode["key"].InnerText;
-                        XmlNode xmlTranslatedStringNode = xmlTranslatedStringsNode.SelectSingleNode("string[key = \"" + strKey + "\"]");
-                        if (xmlTranslatedStringNode == null)
-                        {
-                            xmlTranslatedStringsNode.AppendChild(objDoc.ImportNode(xmlStringNode, true));
-                        }
-                    }
-                    foreach (XmlNode xmlTranslatedStringNode in xmlTranslatedStringsNode.SelectNodes("string"))
-                    {
-                        if (_workerStringsProcessor.CancellationPending)
-                            break;
-                        string strKey = xmlTranslatedStringNode["key"].InnerText;
-                        XmlNode xmlStringNode = xmlStringsNode.SelectSingleNode("string[key = \"" + strKey + "\"]");
-                        if (xmlStringNode == null)
-                        {
-                            xmlTranslatedStringsNode.RemoveChild(xmlTranslatedStringNode);
-                        }
-                    }
+                    using (XmlNodeList xmlStringNodeList = xmlStringsNode.SelectNodes("string"))
+                        if (xmlStringNodeList != null)
+                            foreach (XmlNode xmlStringNode in xmlStringNodeList)
+                            {
+                                if (_workerStringsProcessor.CancellationPending)
+                                    break;
+                                string strKey = xmlStringNode["key"]?.InnerText;
+                                XmlNode xmlTranslatedStringNode = xmlTranslatedStringsNode.SelectSingleNode("string[key = \"" + strKey + "\"]");
+                                if (xmlTranslatedStringNode == null)
+                                {
+                                    xmlTranslatedStringsNode.AppendChild(objDoc.ImportNode(xmlStringNode, true));
+                                }
+                            }
+                    using (XmlNodeList xmlTranslatedStringNodeList = xmlTranslatedStringsNode.SelectNodes("string"))
+                        if (xmlTranslatedStringNodeList != null)
+                            foreach (XmlNode xmlTranslatedStringNode in xmlTranslatedStringNodeList)
+                            {
+                                if (_workerStringsProcessor.CancellationPending)
+                                    break;
+                                string strKey = xmlTranslatedStringNode["key"]?.InnerText;
+                                XmlNode xmlStringNode = xmlStringsNode.SelectSingleNode("string[key = \"" + strKey + "\"]");
+                                if (xmlStringNode == null)
+                                {
+                                    xmlTranslatedStringsNode.RemoveChild(xmlTranslatedStringNode);
+                                }
+                            }
                 }
                 catch (Exception ex)
                 {
@@ -497,11 +531,11 @@ namespace Translator
             pbProcessProgress.PerformStep();
         }
 
-        private Tuple<XmlDocument, string> _objDataDocWithPath = null;
+        private Tuple<XmlDocument, string> _objDataDocWithPath;
         private void DoDataProcessing(object sender, DoWorkEventArgs e)
         {
-            string[] strArgs = e.Argument as string[];
-            string strFilePath = Path.Combine(PATH, "lang", strArgs[0] + "_data.xml");
+            _blnQueueDataProcessorRun = false;
+            string strFilePath = Path.Combine(PATH, "lang", _astrArgs[0] + "_data.xml");
             XmlDocument objDataDoc = new XmlDocument();
             if (File.Exists(strFilePath))
                 objDataDoc.Load(strFilePath);
@@ -580,39 +614,39 @@ namespace Translator
         #region Data Processing
         private static readonly Action<XmlDocument, BackgroundWorker>[] s_LstProcessFunctions =
         {
-            (x, y) => ProcessArmor(x, y),
-            (x, y) => ProcessBioware(x, y),
-            (x, y) => ProcessBooks(x, y),
-            (x, y) => ProcessComplexForms(x, y),
-            (x, y) => ProcessContacts(x, y),
-            (x, y) => ProcessCritterPowers(x, y),
-            (x, y) => ProcessCritters(x, y),
-            (x, y) => ProcessCyberware(x, y),
-            (x, y) => ProcessEchoes(x, y),
-            (x, y) => ProcessGameplayOptions(x, y),
-            (x, y) => ProcessGear(x, y),
-            (x, y) => ProcessImprovements(x, y),
-            (x, y) => ProcessLicenses(x, y),
-            (x, y) => ProcessLifestyles(x, y),
-            (x, y) => ProcessMartialArts(x, y),
-            (x, y) => ProcessMentors(x, y),
-            (x, y) => ProcessMetamagic(x, y),
-            (x, y) => ProcessMetatypes(x, y),
-            (x, y) => ProcessOptions(x, y),
-            (x, y) => ProcessParagons(x, y),
-            (x, y) => ProcessPowers(x, y),
-            (x, y) => ProcessPriorities(x, y),
-            (x, y) => ProcessPrograms(x, y),
-            (x, y) => ProcessQualities(x, y),
-            (x, y) => ProcessRanges(x, y),
-            (x, y) => ProcessSkills(x, y),
-            (x, y) => ProcessSpells(x, y),
-            (x, y) => ProcessSpiritPowers(x, y),
-            (x, y) => ProcessStreams(x, y),
-            (x, y) => ProcessTraditions(x, y),
-            (x, y) => ProcessVehicles(x, y),
-            (x, y) => ProcessVessels(x, y),
-            (x, y) => ProcessWeapons(x, y),
+            ProcessArmor,
+            ProcessBioware,
+            ProcessBooks,
+            ProcessComplexForms,
+            ProcessContacts,
+            ProcessCritterPowers,
+            ProcessCritters,
+            ProcessCyberware,
+            ProcessEchoes,
+            ProcessGameplayOptions,
+            ProcessGear,
+            ProcessImprovements,
+            ProcessLicenses,
+            ProcessLifestyles,
+            ProcessMartialArts,
+            ProcessMentors,
+            ProcessMetamagic,
+            ProcessMetatypes,
+            ProcessOptions,
+            ProcessParagons,
+            ProcessPowers,
+            ProcessPriorities,
+            ProcessPrograms,
+            ProcessQualities,
+            ProcessRanges,
+            ProcessSkills,
+            ProcessSpells,
+            ProcessSpiritPowers,
+            ProcessStreams,
+            ProcessTraditions,
+            ProcessVehicles,
+            ProcessVessels,
+            ProcessWeapons,
         };
 
         private static void ProcessArmor(XmlDocument objDataDoc, BackgroundWorker objWorker)
@@ -632,7 +666,7 @@ namespace Translator
                 xmlRootArmorFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "armor.xml";
-                xmlRootArmorFileNode.Attributes.Append(xmlAttribute);
+                xmlRootArmorFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootArmorFileNode);
             }
 
@@ -659,7 +693,7 @@ namespace Translator
                         xmlCategoryNode.InnerText = xmlDataCategoryNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataCategoryNode.InnerText;
-                        xmlCategoryNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlCategoryNode.Attributes?.Append(xmlTranslateAttribute);
                         xmlCategoryNodesParent.AppendChild(xmlCategoryNode);
                     }
                 }
@@ -769,7 +803,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlArmorNode.Attributes.Append(xmlExistsAttribute);
+                        xmlArmorNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -874,7 +908,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlArmorModNode.Attributes.Append(xmlExistsAttribute);
+                        xmlArmorModNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -902,7 +936,7 @@ namespace Translator
                 xmlRootBiowareFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "bioware.xml";
-                xmlRootBiowareFileNode.Attributes.Append(xmlAttribute);
+                xmlRootBiowareFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootBiowareFileNode);
             }
 
@@ -929,7 +963,7 @@ namespace Translator
                         xmlCategoryNode.InnerText = xmlDataCategoryNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataCategoryNode.InnerText;
-                        xmlCategoryNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlCategoryNode.Attributes?.Append(xmlTranslateAttribute);
                         xmlCategoryNodesParent.AppendChild(xmlCategoryNode);
                     }
                 }
@@ -1039,7 +1073,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlBiowareNode.Attributes.Append(xmlExistsAttribute);
+                        xmlBiowareNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -1144,7 +1178,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlGradeNode.Attributes.Append(xmlExistsAttribute);
+                        xmlGradeNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -1172,7 +1206,7 @@ namespace Translator
                 xmlRootBooksFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "books.xml";
-                xmlRootBooksFileNode.Attributes.Append(xmlAttribute);
+                xmlRootBooksFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootBooksFileNode);
             }
 
@@ -1190,8 +1224,8 @@ namespace Translator
                 {
                     if (objWorker.CancellationPending)
                         return;
-                    string strDataBookId = xmlDataBookNode["id"].InnerText;
-                    string strDataBookName = xmlDataBookNode["name"].InnerText;
+                    string strDataBookId = xmlDataBookNode["id"]?.InnerText ?? string.Empty;
+                    string strDataBookName = xmlDataBookNode["name"]?.InnerText ?? string.Empty;
                     XmlNode xmlBookNode = xmlBookNodesParent.SelectSingleNode("book[id=\"" + strDataBookId + "\"]");
                     if (xmlBookNode != null)
                     {
@@ -1219,7 +1253,7 @@ namespace Translator
                         if (xmlBookNode["altcode"] == null)
                         {
                             XmlNode xmlCodeElement = objDataDoc.CreateElement("altcode");
-                            xmlCodeElement.InnerText = xmlDataBookNode["code"].InnerText;
+                            xmlCodeElement.InnerText = xmlDataBookNode["code"]?.InnerText ?? string.Empty;
                             xmlBookNode.AppendChild(xmlCodeElement);
                         }
                     }
@@ -1240,7 +1274,7 @@ namespace Translator
                         xmlBookNode.AppendChild(xmlTranslateElement);
 
                         XmlNode xmlCodeElement = objDataDoc.CreateElement("altcode");
-                        xmlCodeElement.InnerText = xmlDataBookNode["code"].InnerText;
+                        xmlCodeElement.InnerText = xmlDataBookNode["code"]?.InnerText ?? string.Empty;
                         xmlBookNode.AppendChild(xmlCodeElement);
 
                         xmlBookNodesParent.AppendChild(xmlBookNode);
@@ -1263,7 +1297,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlBookNode.Attributes.Append(xmlExistsAttribute);
+                        xmlBookNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -1291,7 +1325,7 @@ namespace Translator
                 xmlRootComplexFormsFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "complexforms.xml";
-                xmlRootComplexFormsFileNode.Attributes.Append(xmlAttribute);
+                xmlRootComplexFormsFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootComplexFormsFileNode);
             }
 
@@ -1309,8 +1343,8 @@ namespace Translator
                 {
                     if (objWorker.CancellationPending)
                         return;
-                    string strDataComplexFormId = xmlDataComplexFormNode["id"].InnerText;
-                    string strDataComplexFormName = xmlDataComplexFormNode["name"].InnerText;
+                    string strDataComplexFormId = xmlDataComplexFormNode["id"]?.InnerText ?? string.Empty;
+                    string strDataComplexFormName = xmlDataComplexFormNode["name"]?.InnerText ?? string.Empty;
                     XmlNode xmlComplexFormNode = xmlComplexFormNodesParent.SelectSingleNode("complexform[id=\"" + strDataComplexFormId + "\"]");
                     if (xmlComplexFormNode != null)
                     {
@@ -1338,7 +1372,7 @@ namespace Translator
                         XmlNode xmlPage = xmlComplexFormNode["page"];
                         if (xmlComplexFormNode["altpage"] == null)
                         {
-                            string strPage = xmlPage?.InnerText ?? xmlDataComplexFormNode["page"].InnerText;
+                            string strPage = xmlPage?.InnerText ?? xmlDataComplexFormNode["page"]?.InnerText ?? string.Empty;
                             XmlNode xmlIdElement = objDataDoc.CreateElement("altpage");
                             xmlIdElement.InnerText = strPage;
                             xmlComplexFormNode.AppendChild(xmlIdElement);
@@ -1365,7 +1399,7 @@ namespace Translator
                         xmlComplexFormNode.AppendChild(xmlTranslateElement);
 
                         XmlNode xmlPageElement = objDataDoc.CreateElement("altpage");
-                        xmlPageElement.InnerText = xmlDataComplexFormNode["page"].InnerText;
+                        xmlPageElement.InnerText = xmlDataComplexFormNode["page"]?.InnerText ?? string.Empty;
                         xmlComplexFormNode.AppendChild(xmlPageElement);
 
                         xmlComplexFormNodesParent.AppendChild(xmlComplexFormNode);
@@ -1388,7 +1422,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlComplexFormNode.Attributes.Append(xmlExistsAttribute);
+                        xmlComplexFormNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -1416,7 +1450,7 @@ namespace Translator
                 xmlRootContactFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "contacts.xml";
-                xmlRootContactFileNode.Attributes.Append(xmlAttribute);
+                xmlRootContactFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootContactFileNode);
             }
 
@@ -1443,7 +1477,7 @@ namespace Translator
                         xmlContactNode.InnerText = xmlDataContactNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataContactNode.InnerText;
-                        xmlContactNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlContactNode.Attributes?.Append(xmlTranslateAttribute);
                         xmlContactNodesParent.AppendChild(xmlContactNode);
                     }
                 }
@@ -1481,7 +1515,7 @@ namespace Translator
                         xmlSexNode.InnerText = xmlDataSexNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataSexNode.InnerText;
-                        xmlSexNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlSexNode.Attributes?.Append(xmlTranslateAttribute);
                         xmlSexNodesParent.AppendChild(xmlSexNode);
                     }
                 }
@@ -1519,7 +1553,7 @@ namespace Translator
                         xmlAgeNode.InnerText = xmlDataAgeNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataAgeNode.InnerText;
-                        xmlAgeNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlAgeNode.Attributes?.Append(xmlTranslateAttribute);
                         xmlAgeNodesParent.AppendChild(xmlAgeNode);
                     }
                 }
@@ -1557,7 +1591,7 @@ namespace Translator
                         xmlPersonalLifeNode.InnerText = xmlDataPersonalLifeNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataPersonalLifeNode.InnerText;
-                        xmlPersonalLifeNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlPersonalLifeNode.Attributes?.Append(xmlTranslateAttribute);
                         xmlPersonalLifeNodesParent.AppendChild(xmlPersonalLifeNode);
                     }
                 }
@@ -1595,7 +1629,7 @@ namespace Translator
                         xmlTypeNode.InnerText = xmlDataTypeNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataTypeNode.InnerText;
-                        xmlTypeNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlTypeNode.Attributes?.Append(xmlTranslateAttribute);
                         xmlTypeNodesParent.AppendChild(xmlTypeNode);
                     }
                 }
@@ -1633,7 +1667,7 @@ namespace Translator
                         xmlPreferredPaymentNode.InnerText = xmlDataPreferredPaymentNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataPreferredPaymentNode.InnerText;
-                        xmlPreferredPaymentNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlPreferredPaymentNode.Attributes?.Append(xmlTranslateAttribute);
                         xmlPreferredPaymentNodesParent.AppendChild(xmlPreferredPaymentNode);
                     }
                 }
@@ -1671,7 +1705,7 @@ namespace Translator
                         xmlHobbyViceNode.InnerText = xmlDataHobbyViceNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataHobbyViceNode.InnerText;
-                        xmlHobbyViceNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlHobbyViceNode.Attributes?.Append(xmlTranslateAttribute);
                         xmlHobbyViceNodesParent.AppendChild(xmlHobbyViceNode);
                     }
                 }
@@ -1704,7 +1738,7 @@ namespace Translator
                 xmlRootPowerFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "critterpowers.xml";
-                xmlRootPowerFileNode.Attributes.Append(xmlAttribute);
+                xmlRootPowerFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootPowerFileNode);
             }
 
@@ -1731,7 +1765,7 @@ namespace Translator
                         xmlCategoryNode.InnerText = xmlDataCategoryNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataCategoryNode.InnerText;
-                        xmlCategoryNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlCategoryNode.Attributes?.Append(xmlTranslateAttribute);
                         xmlCategoryNodesParent.AppendChild(xmlCategoryNode);
                     }
                 }
@@ -1762,8 +1796,8 @@ namespace Translator
                 {
                     if (objWorker.CancellationPending)
                         return;
-                    string strDataPowerName = xmlDataPowerNode["name"].InnerText;
-                    string strDataPowerId = xmlDataPowerNode["id"].InnerText;
+                    string strDataPowerName = xmlDataPowerNode["name"]?.InnerText ?? string.Empty;
+                    string strDataPowerId = xmlDataPowerNode["id"]?.InnerText ?? string.Empty;
                     XmlNode xmlPowerNode = xmlPowerNodesParent.SelectSingleNode("power[id=\"" + strDataPowerId + "\"]");
                     if (xmlPowerNode != null)
                     {
@@ -1791,7 +1825,7 @@ namespace Translator
                         XmlNode xmlPage = xmlPowerNode["page"];
                         if (xmlPowerNode["altpage"] == null)
                         {
-                            string strPage = xmlPage?.InnerText ?? xmlDataPowerNode["page"].InnerText;
+                            string strPage = xmlPage?.InnerText ?? xmlDataPowerNode["page"]?.InnerText ?? string.Empty;
                             XmlNode xmlIdElement = objDataDoc.CreateElement("altpage");
                             xmlIdElement.InnerText = strPage;
                             xmlPowerNode.AppendChild(xmlIdElement);
@@ -1818,7 +1852,7 @@ namespace Translator
                         xmlPowerNode.AppendChild(xmlTranslateElement);
 
                         XmlNode xmlPageElement = objDataDoc.CreateElement("altpage");
-                        xmlPageElement.InnerText = xmlDataPowerNode["page"].InnerText;
+                        xmlPageElement.InnerText = xmlDataPowerNode["page"]?.InnerText ?? string.Empty;
                         xmlPowerNode.AppendChild(xmlPageElement);
 
                         xmlPowerNodesParent.AppendChild(xmlPowerNode);
@@ -1841,7 +1875,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlPowerNode.Attributes.Append(xmlExistsAttribute);
+                        xmlPowerNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -1869,7 +1903,7 @@ namespace Translator
                 xmlRootMetatypeFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "critters.xml";
-                xmlRootMetatypeFileNode.Attributes.Append(xmlAttribute);
+                xmlRootMetatypeFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootMetatypeFileNode);
             }
 
@@ -1896,7 +1930,7 @@ namespace Translator
                         xmlCategoryNode.InnerText = xmlDataCategoryNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataCategoryNode.InnerText;
-                        xmlCategoryNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlCategoryNode.Attributes?.Append(xmlTranslateAttribute);
                         xmlCategoryNodesParent.AppendChild(xmlCategoryNode);
                     }
                 }
@@ -1927,8 +1961,8 @@ namespace Translator
                 {
                     if (objWorker.CancellationPending)
                         return;
-                    string strDataMetatypeName = xmlDataMetatypeNode["name"].InnerText;
-                    string strDataMetatypeId = xmlDataMetatypeNode["id"].InnerText;
+                    string strDataMetatypeName = xmlDataMetatypeNode["name"]?.InnerText ?? string.Empty;
+                    string strDataMetatypeId = xmlDataMetatypeNode["id"]?.InnerText ?? string.Empty;
                     XmlNode xmlMetatypeNode = xmlMetatypeNodesParent.SelectSingleNode("metatype[id=\"" + strDataMetatypeId + "\"]");
                     if (xmlMetatypeNode != null)
                     {
@@ -1956,7 +1990,7 @@ namespace Translator
                         XmlNode xmlPage = xmlMetatypeNode["page"];
                         if (xmlMetatypeNode["altpage"] == null)
                         {
-                            string strPage = xmlPage?.InnerText ?? xmlDataMetatypeNode["page"].InnerText;
+                            string strPage = xmlPage?.InnerText ?? xmlDataMetatypeNode["page"]?.InnerText ?? string.Empty;
                             XmlNode xmlIdElement = objDataDoc.CreateElement("altpage");
                             xmlIdElement.InnerText = strPage;
                             xmlMetatypeNode.AppendChild(xmlIdElement);
@@ -1983,7 +2017,7 @@ namespace Translator
                         xmlMetatypeNode.AppendChild(xmlTranslateElement);
 
                         XmlNode xmlPageElement = objDataDoc.CreateElement("altpage");
-                        xmlPageElement.InnerText = xmlDataMetatypeNode["page"].InnerText;
+                        xmlPageElement.InnerText = xmlDataMetatypeNode["page"]?.InnerText ?? string.Empty;
                         xmlMetatypeNode.AppendChild(xmlPageElement);
 
                         xmlMetatypeNodesParent.AppendChild(xmlMetatypeNode);
@@ -2006,7 +2040,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlMetatypeNode.Attributes.Append(xmlExistsAttribute);
+                        xmlMetatypeNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -2034,7 +2068,7 @@ namespace Translator
                 xmlRootCyberwareFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "cyberware.xml";
-                xmlRootCyberwareFileNode.Attributes.Append(xmlAttribute);
+                xmlRootCyberwareFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootCyberwareFileNode);
             }
 
@@ -2061,7 +2095,7 @@ namespace Translator
                         xmlCategoryNode.InnerText = xmlDataCategoryNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataCategoryNode.InnerText;
-                        xmlCategoryNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlCategoryNode.Attributes?.Append(xmlTranslateAttribute);
                         xmlCategoryNodesParent.AppendChild(xmlCategoryNode);
                     }
                 }
@@ -2171,7 +2205,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlCyberwareNode.Attributes.Append(xmlExistsAttribute);
+                        xmlCyberwareNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -2276,7 +2310,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlGradeNode.Attributes.Append(xmlExistsAttribute);
+                        xmlGradeNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -2312,7 +2346,7 @@ namespace Translator
                 xmlRootEchoesFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "echoes.xml";
-                xmlRootEchoesFileNode.Attributes.Append(xmlAttribute);
+                xmlRootEchoesFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootEchoesFileNode);
             }
 
@@ -2409,7 +2443,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlEchoNode.Attributes.Append(xmlExistsAttribute);
+                        xmlEchoNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -2437,7 +2471,7 @@ namespace Translator
                 xmlRootGameplayOptionsFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "gameplayoptions.xml";
-                xmlRootGameplayOptionsFileNode.Attributes.Append(xmlAttribute);
+                xmlRootGameplayOptionsFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootGameplayOptionsFileNode);
             }
 
@@ -2519,7 +2553,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlGameplayOptionNode.Attributes.Append(xmlExistsAttribute);
+                        xmlGameplayOptionNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -2547,7 +2581,7 @@ namespace Translator
                 xmlRootGearFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "gear.xml";
-                xmlRootGearFileNode.Attributes.Append(xmlAttribute);
+                xmlRootGearFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootGearFileNode);
             }
 
@@ -2574,7 +2608,7 @@ namespace Translator
                         xmlCategoryNode.InnerText = xmlDataCategoryNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataCategoryNode.InnerText;
-                        xmlCategoryNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlCategoryNode.Attributes?.Append(xmlTranslateAttribute);
                         xmlCategoryNodesParent.AppendChild(xmlCategoryNode);
                     }
                 }
@@ -2684,7 +2718,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlGearNode.Attributes.Append(xmlExistsAttribute);
+                        xmlGearNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -2712,7 +2746,7 @@ namespace Translator
                 xmlRootImprovementsFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "improvements.xml";
-                xmlRootImprovementsFileNode.Attributes.Append(xmlAttribute);
+                xmlRootImprovementsFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootImprovementsFileNode);
             }
 
@@ -2809,7 +2843,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlImprovementNode.Attributes.Append(xmlExistsAttribute);
+                        xmlImprovementNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -2837,7 +2871,7 @@ namespace Translator
                 xmlRootLicenseFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "licenses.xml";
-                xmlRootLicenseFileNode.Attributes.Append(xmlAttribute);
+                xmlRootLicenseFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootLicenseFileNode);
             }
 
@@ -2864,7 +2898,7 @@ namespace Translator
                         xmlLicenseNode.InnerText = xmlDataLicenseNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataLicenseNode.InnerText;
-                        xmlLicenseNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlLicenseNode.Attributes?.Append(xmlTranslateAttribute);
                         xmlLicenseNodesParent.AppendChild(xmlLicenseNode);
                     }
                 }
@@ -2897,7 +2931,7 @@ namespace Translator
                 xmlRootLifestyleFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "lifestyles.xml";
-                xmlRootLifestyleFileNode.Attributes.Append(xmlAttribute);
+                xmlRootLifestyleFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootLifestyleFileNode);
             }
 
@@ -2924,7 +2958,7 @@ namespace Translator
                         xmlCategoryNode.InnerText = xmlDataCategoryNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataCategoryNode.InnerText;
-                        xmlCategoryNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlCategoryNode.Attributes?.Append(xmlTranslateAttribute);
                         xmlCategoryNodesParent.AppendChild(xmlCategoryNode);
                     }
                 }
@@ -3034,7 +3068,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlLifestyleNode.Attributes.Append(xmlExistsAttribute);
+                        xmlLifestyleNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -3139,7 +3173,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlQualityNode.Attributes.Append(xmlExistsAttribute);
+                        xmlQualityNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -3195,7 +3229,7 @@ namespace Translator
                 xmlRootMartialArtFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "martialarts.xml";
-                xmlRootMartialArtFileNode.Attributes.Append(xmlAttribute);
+                xmlRootMartialArtFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootMartialArtFileNode);
             }
 
@@ -3301,7 +3335,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlMartialArtNode.Attributes.Append(xmlExistsAttribute);
+                        xmlMartialArtNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -3406,7 +3440,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlTechniqueNode.Attributes.Append(xmlExistsAttribute);
+                        xmlTechniqueNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -3442,7 +3476,7 @@ namespace Translator
                 xmlRootMentorFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "mentors.xml";
-                xmlRootMentorFileNode.Attributes.Append(xmlAttribute);
+                xmlRootMentorFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootMentorFileNode);
             }
 
@@ -3592,7 +3626,7 @@ namespace Translator
                                         return;
                                     XmlAttribute xmlChoiceNodeAttribute = objDataDoc.CreateAttribute(xmlDataChoiceNodeAttribute.Name);
                                     xmlChoiceNodeAttribute.Value = xmlDataChoiceNodeAttribute.InnerText;
-                                    xmlChoiceNode.Attributes.Append(xmlChoiceNodeAttribute);
+                                    xmlChoiceNode.Attributes?.Append(xmlChoiceNodeAttribute);
                                 }
 
                                 xmlMentorChoicesNode.AppendChild(xmlChoiceNode);
@@ -3617,7 +3651,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlMentorNode.Attributes.Append(xmlExistsAttribute);
+                        xmlMentorNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -3645,7 +3679,7 @@ namespace Translator
                 xmlRootMetamagicFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "metamagic.xml";
-                xmlRootMetamagicFileNode.Attributes.Append(xmlAttribute);
+                xmlRootMetamagicFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootMetamagicFileNode);
             }
 
@@ -3744,7 +3778,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlMetamagicNode.Attributes.Append(xmlExistsAttribute);
+                        xmlMetamagicNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -3849,7 +3883,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlArtNode.Attributes.Append(xmlExistsAttribute);
+                        xmlArtNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -3877,7 +3911,7 @@ namespace Translator
                 xmlRootMetatypeFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "metatypes.xml";
-                xmlRootMetatypeFileNode.Attributes.Append(xmlAttribute);
+                xmlRootMetatypeFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootMetatypeFileNode);
             }
 
@@ -3904,7 +3938,7 @@ namespace Translator
                         xmlCategoryNode.InnerText = xmlDataCategoryNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataCategoryNode.InnerText;
-                        xmlCategoryNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlCategoryNode.Attributes?.Append(xmlTranslateAttribute);
                         xmlCategoryNodesParent.AppendChild(xmlCategoryNode);
                     }
                 }
@@ -4018,7 +4052,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlMetatypeNode.Attributes.Append(xmlExistsAttribute);
+                        xmlMetatypeNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -4046,7 +4080,7 @@ namespace Translator
                 xmlRootOptionFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "options.xml";
-                xmlRootOptionFileNode.Attributes.Append(xmlAttribute);
+                xmlRootOptionFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootOptionFileNode);
             }
 
@@ -4073,7 +4107,7 @@ namespace Translator
                         xmlBlackMarketPipelineCategoryNode.InnerText = xmlDataBlackMarketPipelineCategoryNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataBlackMarketPipelineCategoryNode.InnerText;
-                        xmlBlackMarketPipelineCategoryNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlBlackMarketPipelineCategoryNode.Attributes?.Append(xmlTranslateAttribute);
                         xmlBlackMarketPipelineCategoryNodesParent.AppendChild(xmlBlackMarketPipelineCategoryNode);
                     }
                 }
@@ -4154,7 +4188,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlLimbOptionNode.Attributes.Append(xmlExistsAttribute);
+                        xmlLimbOptionNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -4230,7 +4264,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlPDFArgumentNode.Attributes.Append(xmlExistsAttribute);
+                        xmlPDFArgumentNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -4258,7 +4292,7 @@ namespace Translator
                 xmlRootParagonFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "paragons.xml";
-                xmlRootParagonFileNode.Attributes.Append(xmlAttribute);
+                xmlRootParagonFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootParagonFileNode);
             }
 
@@ -4285,7 +4319,7 @@ namespace Translator
                         xmlCategoryNode.InnerText = xmlDataCategoryNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataCategoryNode.InnerText;
-                        xmlCategoryNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlCategoryNode.Attributes?.Append(xmlTranslateAttribute);
                         xmlCategoryNodesParent.AppendChild(xmlCategoryNode);
                     }
                 }
@@ -4446,7 +4480,7 @@ namespace Translator
                                         return;
                                     XmlAttribute xmlChoiceNodeAttribute = objDataDoc.CreateAttribute(xmlDataChoiceNodeAttribute.Name);
                                     xmlChoiceNodeAttribute.Value = xmlDataChoiceNodeAttribute.InnerText;
-                                    xmlChoiceNode.Attributes.Append(xmlChoiceNodeAttribute);
+                                    xmlChoiceNode.Attributes?.Append(xmlChoiceNodeAttribute);
                                 }
 
                                 xmlParagonChoicesNode.AppendChild(xmlChoiceNode);
@@ -4471,7 +4505,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlParagonNode.Attributes.Append(xmlExistsAttribute);
+                        xmlParagonNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -4507,7 +4541,7 @@ namespace Translator
                 xmlRootPowerFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "powers.xml";
-                xmlRootPowerFileNode.Attributes.Append(xmlAttribute);
+                xmlRootPowerFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootPowerFileNode);
             }
 
@@ -4606,7 +4640,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlPowerNode.Attributes.Append(xmlExistsAttribute);
+                        xmlPowerNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -4711,7 +4745,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlEnhancementNode.Attributes.Append(xmlExistsAttribute);
+                        xmlEnhancementNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -4739,7 +4773,7 @@ namespace Translator
                 xmlRootPriorityFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "priorities.xml";
-                xmlRootPriorityFileNode.Attributes.Append(xmlAttribute);
+                xmlRootPriorityFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootPriorityFileNode);
             }
 
@@ -4766,7 +4800,7 @@ namespace Translator
                         xmlCategoryNode.InnerText = xmlDataCategoryNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataCategoryNode.InnerText;
-                        xmlCategoryNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlCategoryNode.Attributes?.Append(xmlTranslateAttribute);
                         xmlCategoryNodesParent.AppendChild(xmlCategoryNode);
                     }
                 }
@@ -4863,7 +4897,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlPriorityNode.Attributes.Append(xmlExistsAttribute);
+                        xmlPriorityNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -4907,7 +4941,7 @@ namespace Translator
                 xmlRootProgramFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "programs.xml";
-                xmlRootProgramFileNode.Attributes.Append(xmlAttribute);
+                xmlRootProgramFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootProgramFileNode);
             }
 
@@ -4934,7 +4968,7 @@ namespace Translator
                         xmlCategoryNode.InnerText = xmlDataCategoryNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataCategoryNode.InnerText;
-                        xmlCategoryNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlCategoryNode.Attributes?.Append(xmlTranslateAttribute);
                         xmlCategoryNodesParent.AppendChild(xmlCategoryNode);
                     }
                 }
@@ -5044,7 +5078,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlProgramNode.Attributes.Append(xmlExistsAttribute);
+                        xmlProgramNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -5080,7 +5114,7 @@ namespace Translator
                 xmlRootRangeFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "ranges.xml";
-                xmlRootRangeFileNode.Attributes.Append(xmlAttribute);
+                xmlRootRangeFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootRangeFileNode);
             }
 
@@ -5150,7 +5184,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlRangeNode.Attributes.Append(xmlExistsAttribute);
+                        xmlRangeNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -5178,7 +5212,7 @@ namespace Translator
                 xmlRootQualityFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "qualities.xml";
-                xmlRootQualityFileNode.Attributes.Append(xmlAttribute);
+                xmlRootQualityFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootQualityFileNode);
             }
 
@@ -5205,7 +5239,7 @@ namespace Translator
                         xmlCategoryNode.InnerText = xmlDataCategoryNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataCategoryNode.InnerText;
-                        xmlCategoryNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlCategoryNode.Attributes?.Append(xmlTranslateAttribute);
                         xmlCategoryNodesParent.AppendChild(xmlCategoryNode);
                     }
                 }
@@ -5315,7 +5349,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlQualityNode.Attributes.Append(xmlExistsAttribute);
+                        xmlQualityNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -5343,7 +5377,7 @@ namespace Translator
                 xmlRootSkillFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "skills.xml";
-                xmlRootSkillFileNode.Attributes.Append(xmlAttribute);
+                xmlRootSkillFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootSkillFileNode);
             }
 
@@ -5370,10 +5404,10 @@ namespace Translator
                         xmlCategoryNode.InnerText = xmlDataCategoryNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataCategoryNode.InnerText;
-                        xmlCategoryNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlCategoryNode.Attributes?.Append(xmlTranslateAttribute);
                         XmlAttribute xmlTypeAttribute = objDataDoc.CreateAttribute("type");
                         xmlTypeAttribute.Value = xmlDataCategoryNode.Attributes?["type"]?.InnerText ?? string.Empty;
-                        xmlCategoryNode.Attributes.Append(xmlTypeAttribute);
+                        xmlCategoryNode.Attributes?.Append(xmlTypeAttribute);
                         xmlCategoryNodesParent.AppendChild(xmlCategoryNode);
                     }
                 }
@@ -5411,7 +5445,7 @@ namespace Translator
                         xmlSkillGroupNode.InnerText = xmlDataSkillGroupNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataSkillGroupNode.InnerText;
-                        xmlSkillGroupNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlSkillGroupNode.Attributes?.Append(xmlTranslateAttribute);
                         xmlSkillGroupNodesParent.AppendChild(xmlSkillGroupNode);
                     }
                 }
@@ -5523,7 +5557,7 @@ namespace Translator
                             xmlSpecNode.InnerText = strSpecName;
                             XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                             xmlTranslateAttribute.InnerText = strSpecName;
-                            xmlSpecNode.Attributes.Append(xmlTranslateAttribute);
+                            xmlSpecNode.Attributes?.Append(xmlTranslateAttribute);
                             xmlSkillSpecsNode.AppendChild(xmlSpecNode);
                         }
                     }
@@ -5546,7 +5580,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlSkillNode.Attributes.Append(xmlExistsAttribute);
+                        xmlSkillNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -5572,7 +5606,7 @@ namespace Translator
                             {
                                 XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                                 xmlExistsAttribute.Value = "False";
-                                xmlSkillNodeSpecsParent.Attributes.Append(xmlExistsAttribute);
+                                xmlSkillNodeSpecsParent.Attributes?.Append(xmlExistsAttribute);
                             }
 #else
                             {
@@ -5595,7 +5629,7 @@ namespace Translator
                                         {
                                             xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                                             xmlExistsAttribute.Value = "False";
-                                            xmlSpecNode.Attributes.Append(xmlExistsAttribute);
+                                            xmlSpecNode.Attributes?.Append(xmlExistsAttribute);
                                         }
                                         else
                                             xmlExistsAttribute.Value = "False";
@@ -5692,7 +5726,7 @@ namespace Translator
                             xmlSpecNode.InnerText = strSpecName;
                             XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                             xmlTranslateAttribute.InnerText = strSpecName;
-                            xmlSpecNode.Attributes.Append(xmlTranslateAttribute);
+                            xmlSpecNode.Attributes?.Append(xmlTranslateAttribute);
                             xmlKnowledgeSkillSpecsNode.AppendChild(xmlSpecNode);
                         }
                     }
@@ -5715,7 +5749,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlKnowledgeSkillNode.Attributes.Append(xmlExistsAttribute);
+                        xmlKnowledgeSkillNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -5741,7 +5775,7 @@ namespace Translator
                             {
                                 XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                                 xmlExistsAttribute.Value = "False";
-                                xmlSkillNodeSpecsParent.Attributes.Append(xmlExistsAttribute);
+                                xmlSkillNodeSpecsParent.Attributes?.Append(xmlExistsAttribute);
                             }
 #else
                             {
@@ -5764,7 +5798,7 @@ namespace Translator
                                         {
                                             xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                                             xmlExistsAttribute.Value = "False";
-                                            xmlSpecNode.Attributes.Append(xmlExistsAttribute);
+                                            xmlSpecNode.Attributes?.Append(xmlExistsAttribute);
                                         }
                                         else
                                             xmlExistsAttribute.Value = "False";
@@ -5799,7 +5833,7 @@ namespace Translator
                 xmlRootSpellFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "spells.xml";
-                xmlRootSpellFileNode.Attributes.Append(xmlAttribute);
+                xmlRootSpellFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootSpellFileNode);
             }
 
@@ -5826,7 +5860,7 @@ namespace Translator
                         xmlCategoryNode.InnerText = xmlDataCategoryNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataCategoryNode.InnerText;
-                        xmlCategoryNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlCategoryNode.Attributes?.Append(xmlTranslateAttribute);
                         xmlCategoryNodesParent.AppendChild(xmlCategoryNode);
                     }
                 }
@@ -5936,7 +5970,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlSpellNode.Attributes.Append(xmlExistsAttribute);
+                        xmlSpellNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -5964,7 +5998,7 @@ namespace Translator
                 xmlRootPowerFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "spiritpowers.xml";
-                xmlRootPowerFileNode.Attributes.Append(xmlAttribute);
+                xmlRootPowerFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootPowerFileNode);
             }
 
@@ -6051,7 +6085,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlPowerNode.Attributes.Append(xmlExistsAttribute);
+                        xmlPowerNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -6079,7 +6113,7 @@ namespace Translator
                 xmlRootTraditionFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "streams.xml";
-                xmlRootTraditionFileNode.Attributes.Append(xmlAttribute);
+                xmlRootTraditionFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootTraditionFileNode);
             }
 
@@ -6178,7 +6212,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlTraditionNode.Attributes.Append(xmlExistsAttribute);
+                        xmlTraditionNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -6283,7 +6317,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlSpiritNode.Attributes.Append(xmlExistsAttribute);
+                        xmlSpiritNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -6311,7 +6345,7 @@ namespace Translator
                 xmlRootTraditionFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "traditions.xml";
-                xmlRootTraditionFileNode.Attributes.Append(xmlAttribute);
+                xmlRootTraditionFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootTraditionFileNode);
             }
 
@@ -6410,7 +6444,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlTraditionNode.Attributes.Append(xmlExistsAttribute);
+                        xmlTraditionNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -6515,7 +6549,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlSpiritNode.Attributes.Append(xmlExistsAttribute);
+                        xmlSpiritNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -6603,7 +6637,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlDrainAttributeNode.Attributes.Append(xmlExistsAttribute);
+                        xmlDrainAttributeNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -6631,7 +6665,7 @@ namespace Translator
                 xmlRootVehicleFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "vehicles.xml";
-                xmlRootVehicleFileNode.Attributes.Append(xmlAttribute);
+                xmlRootVehicleFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootVehicleFileNode);
             }
 
@@ -6658,7 +6692,7 @@ namespace Translator
                         xmlCategoryNode.InnerText = xmlDataCategoryNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataCategoryNode.InnerText;
-                        xmlCategoryNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlCategoryNode.Attributes?.Append(xmlTranslateAttribute);
                         xmlCategoryNodesParent.AppendChild(xmlCategoryNode);
                     }
                 }
@@ -6696,7 +6730,7 @@ namespace Translator
                         xmlCategoryNode.InnerText = xmlDataCategoryNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataCategoryNode.InnerText;
-                        xmlCategoryNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlCategoryNode.Attributes?.Append(xmlTranslateAttribute);
                         xmlModCategoryNodesParent.AppendChild(xmlCategoryNode);
                     }
                 }
@@ -6806,7 +6840,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlVehicleNode.Attributes.Append(xmlExistsAttribute);
+                        xmlVehicleNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -6911,7 +6945,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlVehicleModNode.Attributes.Append(xmlExistsAttribute);
+                        xmlVehicleModNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -7016,7 +7050,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlWeaponMountNode.Attributes.Append(xmlExistsAttribute);
+                        xmlWeaponMountNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -7121,7 +7155,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlWeaponMountModNode.Attributes.Append(xmlExistsAttribute);
+                        xmlWeaponMountModNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -7157,7 +7191,7 @@ namespace Translator
                 xmlRootMetatypeFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "vessels.xml";
-                xmlRootMetatypeFileNode.Attributes.Append(xmlAttribute);
+                xmlRootMetatypeFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootMetatypeFileNode);
             }
 
@@ -7184,7 +7218,7 @@ namespace Translator
                         xmlCategoryNode.InnerText = xmlDataCategoryNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataCategoryNode.InnerText;
-                        xmlCategoryNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlCategoryNode.Attributes?.Append(xmlTranslateAttribute);
                         xmlCategoryNodesParent.AppendChild(xmlCategoryNode);
                     }
                 }
@@ -7294,7 +7328,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlMetatypeNode.Attributes.Append(xmlExistsAttribute);
+                        xmlMetatypeNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -7322,7 +7356,7 @@ namespace Translator
                 xmlRootWeaponFileNode = objDataDoc.CreateElement("chummer");
                 XmlAttribute xmlAttribute = objDataDoc.CreateAttribute("file");
                 xmlAttribute.Value = "weapons.xml";
-                xmlRootWeaponFileNode.Attributes.Append(xmlAttribute);
+                xmlRootWeaponFileNode.Attributes?.Append(xmlAttribute);
                 xmlRootNode.AppendChild(xmlRootWeaponFileNode);
             }
 
@@ -7349,7 +7383,7 @@ namespace Translator
                         xmlCategoryNode.InnerText = xmlDataCategoryNode.InnerText;
                         XmlAttribute xmlTranslateAttribute = objDataDoc.CreateAttribute("translate");
                         xmlTranslateAttribute.Value = xmlDataCategoryNode.InnerText;
-                        xmlCategoryNode.Attributes.Append(xmlTranslateAttribute);
+                        xmlCategoryNode.Attributes?.Append(xmlTranslateAttribute);
                         xmlCategoryNodesParent.AppendChild(xmlCategoryNode);
                     }
                 }
@@ -7459,7 +7493,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlWeaponNode.Attributes.Append(xmlExistsAttribute);
+                        xmlWeaponNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -7564,7 +7598,7 @@ namespace Translator
                     {
                         XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                         xmlExistsAttribute.Value = "False";
-                        xmlAccessoryNode.Attributes.Append(xmlExistsAttribute);
+                        xmlAccessoryNode.Attributes?.Append(xmlExistsAttribute);
                     }
 #else
                     {
@@ -7668,13 +7702,13 @@ namespace Translator
                         if (xmlAttribute.Name != "translated")
                             xmlSubItem.Attributes.RemoveAt(i);
                     }
-                    if (xmlDataSubItemsList?.SelectSingleNode(strSubItem + "[name = \"" + xmlSubItem["name"]?.InnerText + "\"]") == null)
+                    if (xmlDataSubItemsList.SelectSingleNode(strSubItem + "[name = \"" + xmlSubItem["name"]?.InnerText + "\"]") == null)
                     {
 #if !DELETE
                                 {
                                     XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                                     xmlExistsAttribute.Value = "False";
-                                    xmlSubItem.Attributes.Append(xmlExistsAttribute);
+                                    xmlSubItem.Attributes?.Append(xmlExistsAttribute);
                                 }
 #else
                         {
@@ -7690,7 +7724,7 @@ namespace Translator
                         {
                             XmlAttribute xmlExistsAttribute = objDataDoc.CreateAttribute("exists");
                             xmlExistsAttribute.Value = "False";
-                            xmlSubItem.Attributes.Append(xmlExistsAttribute);
+                            xmlSubItem.Attributes?.Append(xmlExistsAttribute);
                         }
 #else
                 {
@@ -7704,16 +7738,9 @@ namespace Translator
 
         #endregion Data Processing
 
-
-
         #region Properties
-        public IList<frmTranslate> OpenTranslateWindows
-        {
-            get
-            {
-                return s_LstOpenTranslateWindows;
-            }
-        }
+        public IList<frmTranslate> OpenTranslateWindows => s_LstOpenTranslateWindows;
+
         #endregion
     }
 }

@@ -17,11 +17,14 @@ namespace Chummer.UI.Skills
         /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
-            if (disposing && (components != null))
+            if (disposing)
             {
-                components.Dispose();
+                components?.Dispose();
+                tipTooltip?.Dispose();
+                _italic?.Dispose();
+                _italicName?.Dispose();
+                UnbindSkillControl();
             }
-            _italic.Dispose();
             base.Dispose(disposing);
         }
 
@@ -38,8 +41,8 @@ namespace Chummer.UI.Skills
             this.cmsSkillLabel = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.tsSkillLabelNotes = new System.Windows.Forms.ToolStripMenuItem();
             this.lblAttribute = new System.Windows.Forms.Label();
-            this.nudKarma = new NumericUpDownEx();
-            this.nudSkill = new NumericUpDownEx();
+            this.nudKarma = new Chummer.NumericUpDownEx();
+            this.nudSkill = new Chummer.NumericUpDownEx();
             this.lblModifiedRating = new System.Windows.Forms.Label();
             this.cboSpec = new System.Windows.Forms.ComboBox();
             this.chkKarma = new System.Windows.Forms.CheckBox();
@@ -58,7 +61,6 @@ namespace Chummer.UI.Skills
             // 
             // lblName
             // 
-            this.lblName.AutoSize = true;
             this.lblName.ContextMenuStrip = this.cmsSkillLabel;
             this.lblName.Location = new System.Drawing.Point(0, 5);
             this.lblName.Name = "lblName";
@@ -94,7 +96,7 @@ namespace Chummer.UI.Skills
             // 
             // nudKarma
             // 
-            this.nudKarma.InterceptMouseWheel = NumericUpDownEx.InterceptMouseWheelMode.WhenMouseOver;
+            this.nudKarma.InterceptMouseWheel = Chummer.NumericUpDownEx.InterceptMouseWheelMode.WhenMouseOver;
             this.nudKarma.Location = new System.Drawing.Point(210, 2);
             this.nudKarma.Maximum = new decimal(new int[] {
             99,
@@ -107,7 +109,7 @@ namespace Chummer.UI.Skills
             // 
             // nudSkill
             // 
-            this.nudSkill.InterceptMouseWheel = NumericUpDownEx.InterceptMouseWheelMode.WhenMouseOver;
+            this.nudSkill.InterceptMouseWheel = Chummer.NumericUpDownEx.InterceptMouseWheelMode.WhenMouseOver;
             this.nudSkill.Location = new System.Drawing.Point(168, 2);
             this.nudSkill.Maximum = new decimal(new int[] {
             99,

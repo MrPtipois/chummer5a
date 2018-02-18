@@ -16,12 +16,10 @@
  *  You can obtain the full source code for Chummer5a at
  *  https://github.com/chummer5a/chummer5a
  */
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+ using System;
+ using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Runtime.CompilerServices;
+ using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Windows.Forms;
@@ -32,7 +30,7 @@ namespace Chummer
     {
         private static readonly StreamWriter s_LogWriter;
         private static readonly StringBuilder s_TimeStamper;  //This will break in case of multithreading
-        private static bool s_BlnLogEnabled = false;
+        private static bool s_BlnLogEnabled;
         static Log()
         {
             Stopwatch sw = Stopwatch.StartNew();
@@ -174,20 +172,14 @@ namespace Chummer
 #endif
             )
         {
-            writeLog(new object[]{info},file, method, line, "Error     ");
+            writeLog(new[]{info},file, method, line, "Error     ");
         }
 
         /// <summary>
         /// Log an exception has occoured
         /// </summary>
-        /// <param name="info">An optional array of objects providing additional data</param>
-        /// <param name="file">Do not use this</param>
-        /// <param name="method">Do not use this</param>
-        /// <param name="line">Do not use this</param>
-        public static void Exception
-        (
-            Exception exception
-        )
+        /// <param name="exception">Exception to log.</param>
+        public static void Exception(Exception exception)
         {
             if(!s_BlnLogEnabled)
                 return;
@@ -245,7 +237,7 @@ namespace Chummer
 #endif
             )
         {
-            writeLog(new object[]{info},file, method, line, "Warning   ");
+            writeLog(new[]{info},file, method, line, "Warning   ");
         }
 
         /// <summary>
@@ -281,7 +273,7 @@ namespace Chummer
         /// <param name="line">Do not use this</param>
         public static void Info
             (
-            String info = null,
+            string info = null,
 #if LEGACY
             string file = "LEGACY",
             string method = "LEGACY",
@@ -306,7 +298,7 @@ namespace Chummer
 
             s_TimeStamper.Clear();
             s_TimeStamper.Append(pre);
-            string[] classPath = file.Split(new char[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar });
+            string[] classPath = file.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
             s_TimeStamper.Append(classPath[classPath.Length - 1]);
             s_TimeStamper.Append('.');
             s_TimeStamper.Append(method);
@@ -316,9 +308,9 @@ namespace Chummer
             if (info != null)
             {
                 s_TimeStamper.Append(' ');
-                foreach (object o in info)
+                for (int i = 0; i < info.Length; ++i)
                 {
-                    s_TimeStamper.Append(o);
+                    s_TimeStamper.Append(info[i]);
                     s_TimeStamper.Append(", ");
                 }
 

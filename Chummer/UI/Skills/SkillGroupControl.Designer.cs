@@ -13,9 +13,11 @@ namespace Chummer.UI.Skills
         /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
-            if (disposing && (components != null))
+            if (disposing)
             {
-                components.Dispose();
+                components?.Dispose();
+                tipToolTip?.Dispose();
+                UnbindSkillGroupControl();
             }
             base.Dispose(disposing);
         }
@@ -28,44 +30,15 @@ namespace Chummer.UI.Skills
         /// </summary>
         private void InitializeComponent()
         {
-            this.components = new System.ComponentModel.Container();
-            this.nudSkill = new NumericUpDownEx();
-            this.nudKarma = new NumericUpDownEx();
             this.lblName = new System.Windows.Forms.Label();
             this.lblGroupRating = new System.Windows.Forms.Label();
             this.btnCareerIncrease = new System.Windows.Forms.Button();
             this.tipToolTip = new TheArtOfDev.HtmlRenderer.WinForms.HtmlToolTip();
-            ((System.ComponentModel.ISupportInitialize)(this.nudSkill)).BeginInit();
+            this.nudKarma = new Chummer.NumericUpDownEx();
+            this.nudSkill = new Chummer.NumericUpDownEx();
             ((System.ComponentModel.ISupportInitialize)(this.nudKarma)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.nudSkill)).BeginInit();
             this.SuspendLayout();
-            // 
-            // nudSkill
-            // 
-            this.nudSkill.InterceptMouseWheel = NumericUpDownEx.InterceptMouseWheelMode.WhenMouseOver;
-            this.nudSkill.Location = new System.Drawing.Point(134, 1);
-            this.nudSkill.Maximum = new decimal(new int[] {
-            99,
-            0,
-            0,
-            0});
-            this.nudSkill.Name = "nudSkill";
-            this.nudSkill.ShowUpDownButtons = NumericUpDownEx.ShowUpDownButtonsMode.Always;
-            this.nudSkill.Size = new System.Drawing.Size(40, 20);
-            this.nudSkill.TabIndex = 2;
-            // 
-            // nudKarma
-            // 
-            this.nudKarma.InterceptMouseWheel = NumericUpDownEx.InterceptMouseWheelMode.WhenMouseOver;
-            this.nudKarma.Location = new System.Drawing.Point(180, 1);
-            this.nudKarma.Maximum = new decimal(new int[] {
-            99,
-            0,
-            0,
-            0});
-            this.nudKarma.Name = "nudKarma";
-            this.nudKarma.ShowUpDownButtons = NumericUpDownEx.ShowUpDownButtonsMode.Always;
-            this.nudKarma.Size = new System.Drawing.Size(40, 20);
-            this.nudKarma.TabIndex = 5;
             // 
             // lblName
             // 
@@ -98,6 +71,40 @@ namespace Chummer.UI.Skills
             this.btnCareerIncrease.Visible = false;
             this.btnCareerIncrease.Click += new System.EventHandler(this.btnCareerIncrease_Click);
             // 
+            // tipToolTip
+            // 
+            this.tipToolTip.AllowLinksHandling = true;
+            this.tipToolTip.BaseStylesheet = null;
+            this.tipToolTip.MaximumSize = new System.Drawing.Size(0, 0);
+            this.tipToolTip.OwnerDraw = true;
+            this.tipToolTip.TooltipCssClass = "htmltooltip";
+            // 
+            // nudKarma
+            // 
+            this.nudKarma.InterceptMouseWheel = Chummer.NumericUpDownEx.InterceptMouseWheelMode.WhenMouseOver;
+            this.nudKarma.Location = new System.Drawing.Point(180, 1);
+            this.nudKarma.Maximum = new decimal(new int[] {
+            99,
+            0,
+            0,
+            0});
+            this.nudKarma.Name = "nudKarma";
+            this.nudKarma.Size = new System.Drawing.Size(40, 20);
+            this.nudKarma.TabIndex = 5;
+            // 
+            // nudSkill
+            // 
+            this.nudSkill.InterceptMouseWheel = Chummer.NumericUpDownEx.InterceptMouseWheelMode.WhenMouseOver;
+            this.nudSkill.Location = new System.Drawing.Point(134, 1);
+            this.nudSkill.Maximum = new decimal(new int[] {
+            99,
+            0,
+            0,
+            0});
+            this.nudSkill.Name = "nudSkill";
+            this.nudSkill.Size = new System.Drawing.Size(40, 20);
+            this.nudSkill.TabIndex = 2;
+            // 
             // SkillGroupControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -110,8 +117,8 @@ namespace Chummer.UI.Skills
             this.Margin = new System.Windows.Forms.Padding(0);
             this.Name = "SkillGroupControl";
             this.Size = new System.Drawing.Size(225, 23);
-            ((System.ComponentModel.ISupportInitialize)(this.nudSkill)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.nudKarma)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.nudSkill)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 

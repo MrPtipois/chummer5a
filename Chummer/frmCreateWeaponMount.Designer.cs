@@ -13,9 +13,10 @@ namespace Chummer
         /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
-            if (disposing && (components != null))
+            if (disposing)
             {
-                components.Dispose();
+                components?.Dispose();
+                tipTooltip?.Dispose();
             }
             base.Dispose(disposing);
         }
@@ -59,6 +60,7 @@ namespace Chummer
             // 
             // cmdCancel
             // 
+            this.cmdCancel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.cmdCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
             this.cmdCancel.Location = new System.Drawing.Point(434, 223);
             this.cmdCancel.Name = "cmdCancel";
@@ -71,6 +73,7 @@ namespace Chummer
             // 
             // cmdOK
             // 
+            this.cmdOK.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.cmdOK.Location = new System.Drawing.Point(515, 223);
             this.cmdOK.Name = "cmdOK";
             this.cmdOK.Size = new System.Drawing.Size(75, 23);
@@ -272,6 +275,8 @@ namespace Chummer
             // 
             // treMods
             // 
+            this.treMods.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left)));
             this.treMods.Location = new System.Drawing.Point(12, 35);
             this.treMods.Name = "treMods";
             this.treMods.Size = new System.Drawing.Size(249, 211);
@@ -284,7 +289,7 @@ namespace Chummer
             this.cmdDeleteMod.Name = "cmdDeleteMod";
             this.cmdDeleteMod.Size = new System.Drawing.Size(122, 23);
             this.cmdDeleteMod.TabIndex = 67;
-            this.cmdDeleteMod.Tag = "Button_AddMod";
+            this.cmdDeleteMod.Tag = "Button_DeleteMod";
             this.cmdDeleteMod.Text = "Delete Mod";
             this.cmdDeleteMod.UseVisualStyleBackColor = true;
             this.cmdDeleteMod.Click += new System.EventHandler(this.cmdDeleteMod_Click);
@@ -295,6 +300,7 @@ namespace Chummer
             this.cmdAddMod.Name = "cmdAddMod";
             this.cmdAddMod.Size = new System.Drawing.Size(122, 23);
             this.cmdAddMod.TabIndex = 66;
+            this.cmdAddMod.Tag = "Button_AddMod";
             this.cmdAddMod.Text = "Add Mod";
             this.cmdAddMod.UseVisualStyleBackColor = true;
             this.cmdAddMod.Click += new System.EventHandler(this.cmdAddMod_Click);
@@ -362,6 +368,8 @@ namespace Chummer
             this.Controls.Add(this.cboVisibility);
             this.Controls.Add(this.cmdCancel);
             this.Controls.Add(this.cmdOK);
+            this.DoubleBuffered = true;
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.Name = "frmCreateWeaponMount";
             this.Tag = "Title_CreateWeaponMount";
             this.Text = "Create Weapon Mount";
