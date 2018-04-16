@@ -226,7 +226,7 @@ namespace Chummer
         private void frmViewer_FormClosing(object sender, FormClosingEventArgs e)
         {
             Application.Idle -= RunQueuedWorkers;
-            
+
             if (_workerRefresher.IsBusy)
                 _workerRefresher.CancelAsync();
             if (_workerOutputGenerator.IsBusy)
@@ -266,7 +266,7 @@ namespace Chummer
                 "<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">" +
                 "<head><meta http-equiv=\"x - ua - compatible\" content=\"IE = Edge\"/><meta charset = \"UTF-8\" /></head>" +
                 "<body style=\"width:100%;height:" + webBrowser1.Height.ToString() + ";text-align:center;vertical-align:middle;font-family:segoe, tahoma,'trebuchet ms',arial;font-size:9pt;\">" +
-                strText.Replace("\n", "<br />") +
+                strText.Replace(Environment.NewLine, "<br />").Replace("\n", "<br />") +
                 "</body></html>";
         }
 
@@ -377,7 +377,7 @@ namespace Chummer
             string strXslPath = Path.Combine(Application.StartupPath, "sheets", _strSelectedSheet + ".xsl");
             if (!File.Exists(strXslPath))
             {
-                string strReturn = $"File not found when attempting to load {_strSelectedSheet}\n";
+                string strReturn = $"File not found when attempting to load {_strSelectedSheet}{Environment.NewLine}";
                 Log.Enter(strReturn);
                 MessageBox.Show(strReturn);
                 return;
@@ -393,7 +393,7 @@ namespace Chummer
             }
             catch (Exception ex)
             {
-                string strReturn = $"Error attempting to load {_strSelectedSheet}\n";
+                string strReturn = $"Error attempting to load {_strSelectedSheet}{Environment.NewLine}";
                 Log.Enter(strReturn);
                 Log.Error("ERROR Message = " + ex.Message);
                 strReturn += ex.Message;
@@ -431,7 +431,7 @@ namespace Chummer
             {
                 // The DocumentStream method fails when using Wine, so we'll instead dump everything out a temporary HTML file, have the WebBrowser load that, then delete the temporary file.
                 // Read in the resulting code and pass it to the browser.
-                
+
                 StreamReader objReader = new StreamReader(objStream, Encoding.UTF8, true);
                 string strOutput = objReader.ReadToEnd();
                 File.WriteAllText(_strName, strOutput);
@@ -499,7 +499,7 @@ namespace Chummer
                     return;
                 }
             }
-            
+
             PdfDocument objPdfDocument = new PdfDocument
             {
                 Html = webBrowser1.DocumentText
@@ -569,7 +569,7 @@ namespace Chummer
             string omaeDirectoryPath = Path.Combine(Application.StartupPath, "sheets", "omae");
             string menuMainOmae = LanguageManager.GetString("Menu_Main_Omae", GlobalOptions.Language);
 
-            // Only show files that end in .xsl. Do not include files that end in .xslt since they are used as "hidden" reference sheets 
+            // Only show files that end in .xsl. Do not include files that end in .xslt since they are used as "hidden" reference sheets
             // (hidden because they are partial templates that cannot be used on their own).
             foreach (string fileName in ReadXslFileNamesWithoutExtensionFromDirectory(omaeDirectoryPath))
             {
@@ -641,7 +641,7 @@ namespace Chummer
                     lstLanguages.Add(new ListItem(strLanguageCode, node.InnerText));
                 }
             }
-            
+
             lstLanguages.Sort(CompareListItems.CompareNames);
 
             string strDefaultSheetLanguage = GlobalOptions.Language;
@@ -697,7 +697,7 @@ namespace Chummer
             set => _lstCharacters = value;
         }
 #endregion
-        
+
         private void cboLanguage_SelectedIndexChanged(object sender, EventArgs e)
         {
             _strPrintLanguage = cboLanguage.SelectedValue?.ToString() ?? GlobalOptions.Language;

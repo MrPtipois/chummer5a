@@ -167,7 +167,7 @@ namespace Chummer
                 return string.Empty;
             if (strInput.Length < intToDeleteLength)
                 return strInput;
-            
+
             int intIndexToBeginRemove = strInput.IndexOf(strSubstringToDelete, intStartIndex, eComparison);
             return intIndexToBeginRemove == -1 ? strInput : strInput.Remove(intIndexToBeginRemove, intToDeleteLength);
         }
@@ -189,7 +189,9 @@ namespace Chummer
                 return strInput;
             if (strInput == null)
                 return string.Empty;
-            if (strInput.Length < intToDeleteLength)
+            if (intStartIndex < 0)
+                intStartIndex += strInput.Length;
+            if (intStartIndex < intToDeleteLength - 1)
                 return strInput;
 
             int intIndexToBeginRemove = strInput.LastIndexOf(strSubstringToDelete, intStartIndex, eComparison);
@@ -232,21 +234,23 @@ namespace Chummer
         {
             return strHaystack.IndexOf(chrNeedle) != -1;
         }
-        
+
         /// <summary>
         /// Normalises whitespace for a given textblock, removing extra spaces and trimming the string in the process.
         /// </summary>
         /// <param name="strInput">Input textblock</param>
-        /// <param name="chrWhiteSpace">Whitespace character to use</param>
-        /// <param name="keepLineBreaks">Keep line breaks or consider them whitespace</param>
-        /// <returns>New string with any excess whitespace removed</returns>
-        public static string NormalizeWhiteSpace(this string strInput, char chrWhiteSpace = ' ', bool keepLineBreaks = false)
+        /// <param name="chrWhiteSpace">Whitespace character to use when replacing chars.</param>
+        /// <param name="funcIsWhiteSpace">Custom function with which to check if a character should count as whitespace. If null, defaults to char::IsWhiteSpace.</param>
+        /// <returns>New string with any chars that return true from <paramref name="funcIsWhiteSpace"/> replaced with <paramref name="chrWhiteSpace"/> and any excess whitespace removed.</returns>
+        public static string NormalizeWhiteSpace(this string strInput, char chrWhiteSpace = ' ', Func<char, bool> funcIsWhiteSpace = null)
         {
             if (strInput == null)
                 return string.Empty;
             int intLength = strInput.Length;
             if (intLength == 0)
                 return strInput;
+            if (funcIsWhiteSpace == null)
+                funcIsWhiteSpace = char.IsWhiteSpace;
             char[] achrNewChars = new char[intLength];
             // What we're going here is copying the string-as-CharArray char-by-char into a new CharArray, but processing whitespace characters differently...
             int intCurrent = 0;
@@ -256,7 +260,7 @@ namespace Chummer
             {
                 char chrLoop = strInput[i];
                 // If we encounter a block of whitespace chars, we replace the first instance with chrWhiteSpace, then skip over the rest until we encounter a char that isn't whitespace
-                if (char.IsWhiteSpace(chrLoop) && !(keepLineBreaks && chrLoop=='\n'))
+                if (funcIsWhiteSpace(chrLoop))
                 {
                     if (!blnLastCharWasWhiteSpace)
                         achrNewChars[intCurrent++] = chrWhiteSpace;
@@ -538,7 +542,7 @@ namespace Chummer
         public static string TrimEndOnce(this string strInput, params char[] achrToTrim)
         {
             if (strInput.EndsWith(achrToTrim))
-                return strInput.Substring(1, strInput.Length - 1);
+                return strInput.Substring(0, strInput.Length - 1);
             return strInput;
         }
 
@@ -706,7 +710,7 @@ namespace Chummer
         }
 
         /// <summary>
-        /// Tests whether a given string is a Guid. Returns false if not. 
+        /// Tests whether a given string is a Guid. Returns false if not.
         /// </summary>
         /// <param name="strGuid">String to test.</param>
         /// <returns>True if string is a Guid, false if not.</returns>
@@ -720,51 +724,50 @@ namespace Chummer
         /// Word wraps the given text to fit within the specified width.
         /// </summary>
         /// <param name="strText">Text to be word wrapped</param>
-        /// <param name="intWidth">Width, in characters, to which the text
-        /// should be word wrapped</param>
+        /// <param name="intWidth">Width, in characters, to which the text should be word wrapped</param>
         /// <returns>The modified text</returns>
         public static string WordWrap(this string strText, int intWidth)
         {
             // Lucidity checks
-            if (intWidth < 1)
-                return strText;
             if (string.IsNullOrEmpty(strText))
                 return strText;
+            if (intWidth >= strText.Length)
+                return strText;
 
-            int next;
-            StringBuilder sb = new StringBuilder(strText.Length);
+            int intNextPosition;
+            StringBuilder objReturn = new StringBuilder(strText.Length);
             string strNewLine = Environment.NewLine;
             // Parse each line of text
-            for (int pos = 0; pos < strText.Length; pos = next)
+            for (int intCurrentPosition = 0; intCurrentPosition < strText.Length; intCurrentPosition = intNextPosition)
             {
                 // Find end of line
-                int eol = strText.IndexOf(strNewLine, pos, StringComparison.Ordinal);
-                if (eol == -1)
-                    next = eol = strText.Length;
+                int intEndOfLinePosition = strText.IndexOf(strNewLine, intCurrentPosition, StringComparison.Ordinal);
+                if (intEndOfLinePosition == -1)
+                    intNextPosition = intEndOfLinePosition = strText.Length;
                 else
-                    next = eol + strNewLine.Length;
+                    intNextPosition = intEndOfLinePosition + strNewLine.Length;
 
                 // Copy this line of text, breaking into smaller lines as needed
-                if (eol > pos)
+                if (intEndOfLinePosition > intCurrentPosition)
                 {
                     do
                     {
-                        int len = eol - pos;
-                        if (len > intWidth)
-                            len = strText.BreakLine(pos, intWidth);
-                        sb.Append(strText, pos, len);
-                        sb.Append(strNewLine);
+                        int intLengthToRead = intEndOfLinePosition - intCurrentPosition;
+                        if (intLengthToRead > intWidth)
+                            intLengthToRead = strText.BreakLine(intCurrentPosition, intWidth);
+                        objReturn.Append(strText, intCurrentPosition, intLengthToRead);
+                        objReturn.Append(strNewLine);
 
                         // Trim whitespace following break
-                        pos += len;
-                        while (pos < eol && char.IsWhiteSpace(strText[pos]))
-                            pos += 1;
+                        intCurrentPosition += intLengthToRead;
+                        while (intCurrentPosition < intEndOfLinePosition && char.IsWhiteSpace(strText[intCurrentPosition]))
+                            intCurrentPosition += 1;
                     }
-                    while (eol > pos);
+                    while (intEndOfLinePosition > intCurrentPosition);
                 }
-                else sb.Append(strNewLine); // Empty line
+                else objReturn.Append(strNewLine); // Empty line
             }
-            return sb.ToString();
+            return objReturn.ToString();
         }
 
         /// <summary>

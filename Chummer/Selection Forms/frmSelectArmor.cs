@@ -123,11 +123,13 @@ namespace Chummer
 
         private void cmdOK_Click(object sender, EventArgs e)
         {
+            _blnAddAgain = false;
             AcceptForm();
         }
 
         private void lstArmor_DoubleClick(object sender, EventArgs e)
         {
+            _blnAddAgain = false;
             AcceptForm();
         }
 
@@ -201,7 +203,7 @@ namespace Chummer
         private void cmdOKAdd_Click(object sender, EventArgs e)
         {
             _blnAddAgain = true;
-            cmdOK_Click(sender, e);
+            AcceptForm();
         }
 
         private void txtSearch_TextChanged(object sender, EventArgs e)
@@ -383,16 +385,14 @@ namespace Chummer
                             StringBuilder strAccessories = new StringBuilder();
                             foreach (ArmorMod objMod in objArmor.ArmorMods)
                             {
-                                strAccessories.Append(objMod.DisplayName(GlobalOptions.Language));
-                                strAccessories.Append('\n');
+                                strAccessories.AppendLine(objMod.DisplayName(GlobalOptions.Language));
                             }
                             foreach (Gear objGear in objArmor.Gear)
                             {
-                                strAccessories.Append(objGear.DisplayName(GlobalOptions.Language));
-                                strAccessories.Append('\n');
+                                strAccessories.AppendLine(objGear.DisplayName(GlobalOptions.CultureInfo, GlobalOptions.Language));
                             }
                             if (strAccessories.Length > 0)
-                                strAccessories.Length -= 1;
+                                strAccessories.Length -= Environment.NewLine.Length;
                             SourceString strSource = new SourceString(objArmor.Source, objArmor.Page(GlobalOptions.Language));
                             NuyenString strCost = new NuyenString(objArmor.DisplayCost(out decimal _, false));
 
@@ -510,10 +510,11 @@ namespace Chummer
                 lblArmor.Text = _objSelectedArmor.DisplayName(GlobalOptions.Language);
 
                 string strPage = _objSelectedArmor.Page(GlobalOptions.Language);
-                lblSource.Text = CommonFunctions.LanguageBookShort(_objSelectedArmor.Source, GlobalOptions.Language) + ' ' + strPage;
-                tipTooltip.SetToolTip(lblSource,
-                    CommonFunctions.LanguageBookLong(_objSelectedArmor.Source, GlobalOptions.Language) + ' ' +
-                    LanguageManager.GetString("String_Page", GlobalOptions.Language) + ' ' + strPage);
+                string strSpaceCharacter = LanguageManager.GetString("String_Space", GlobalOptions.Language);
+                lblSource.Text = CommonFunctions.LanguageBookShort(_objSelectedArmor.Source, GlobalOptions.Language) + strSpaceCharacter + strPage;
+                GlobalOptions.ToolTipProcessor.SetToolTip(lblSource,
+                    CommonFunctions.LanguageBookLong(_objSelectedArmor.Source, GlobalOptions.Language) + strSpaceCharacter +
+                    LanguageManager.GetString("String_Page", GlobalOptions.Language) + strSpaceCharacter + strPage);
 
                 lblArmorValue.Text = _objSelectedArmor.DisplayArmorValue;
                 lblCapacity.Text = _objSelectedArmor.CalculatedCapacity;
@@ -538,7 +539,7 @@ namespace Chummer
                 chkBlackMarketDiscount.Checked = false;
                 lblArmor.Text = string.Empty;
                 lblSource.Text = string.Empty;
-                tipTooltip.SetToolTip(lblSource, string.Empty);
+                GlobalOptions.ToolTipProcessor.SetToolTip(lblSource, string.Empty);
 
                 lblArmorValue.Text = string.Empty;
                 lblCapacity.Text = string.Empty;

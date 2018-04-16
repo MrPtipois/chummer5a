@@ -17,6 +17,7 @@
  *  https://github.com/chummer5a/chummer5a
  */
 using System;
+using System.Windows.Navigation;
 using System.Xml;
 using Chummer.Classes;
 
@@ -61,6 +62,8 @@ namespace Chummer
                     return objImprovementAdder.disabletab;
                 case "SELECTRESTRICTED":
                     return objImprovementAdder.selectrestricted;
+                case "SELECTTRADITION":
+                    return objImprovementAdder.selecttradition;
                 case "CYBERSEEKER":
                     return objImprovementAdder.cyberseeker;
                 case "BLOCKSKILLGROUPDEFAULTING":
@@ -107,8 +110,10 @@ namespace Chummer
                     return objImprovementAdder.skilllevel;
                 case "PUSHTEXT":
                     return objImprovementAdder.pushtext;
-                case "KNOWSOFT":
-                    return objImprovementAdder.knowsoft;
+                case "ACTIVESOFT":
+                    return objImprovementAdder.activesoft;
+                case "SKILLSOFT":
+                    return objImprovementAdder.skillsoft;
                 case "KNOWLEDGESKILLLEVEL":
                     return objImprovementAdder.knowledgeskilllevel;
                 case "KNOWLEDGESKILLPOINTS":
@@ -227,8 +232,6 @@ namespace Chummer
                     return objImprovementAdder.mademan;
                 case "FAME":
                     return objImprovementAdder.fame;
-                case "BORNRICH":
-                    return objImprovementAdder.bornrich;
                 case "ERASED":
                     return objImprovementAdder.erased;
                 case "OVERCLOCKER":
@@ -547,6 +550,12 @@ namespace Chummer
                     return objImprovementAdder.addware;
                 case "WEAPONACCURACY":
                     return objImprovementAdder.weaponaccuracy;
+                case "WEAPONSKILLACCURACY":
+                    return objImprovementAdder.weaponskillaccuracy;
+                case "METAGENETICLIMIT":
+                    return objImprovementAdder.metageneticlimit;
+                case "NATURALWEAPON":
+                    return objImprovementAdder.naturalweapon;
                 // No method matches, return a null pointer
                 default:
                     return null;

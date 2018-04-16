@@ -28,6 +28,7 @@ using System.IO;
 using System.Windows.Forms;
  using Microsoft.Win32;
 using iTextSharp.text.pdf;
+ using MersenneTwister;
 
 namespace Chummer
 {
@@ -178,6 +179,23 @@ namespace Chummer
         private static bool _blnDronemodsMaximumPilot;
         private static bool _blnPreferNightlyUpdates;
         private static bool _blnLiveUpdateCleanCharacterFiles;
+
+        public static ThreadSafeRandom RandomGenerator { get; } = new ThreadSafeRandom(DsfmtRandom.Create(DsfmtEdition.OptGen_216091));
+
+        public static ToolTip ToolTipProcessor { get; } = new TheArtOfDev.HtmlRenderer.WinForms.HtmlToolTip
+        {
+            AllowLinksHandling = true,
+            AutoPopDelay = 3600000,
+            BaseStylesheet = null,
+            InitialDelay = 250,
+            IsBalloon = false,
+            MaximumSize = new System.Drawing.Size(0, 0),
+            OwnerDraw = true,
+            ReshowDelay = 100,
+            TooltipCssClass = "htmltooltip",
+            //UseAnimation = true,
+            //UseFading = true
+        };
 
         // Omae Information.
         private static bool _omaeEnabled;
@@ -343,13 +361,13 @@ namespace Chummer
             catch (Exception ex)
             {
                 if (!string.IsNullOrEmpty(ErrorMessage))
-                    ErrorMessage += "\n\n";
+                    ErrorMessage += Environment.NewLine + Environment.NewLine;
                 ErrorMessage += ex.ToString();
             }
             if (_objBaseChummerKey == null)
                 return;
             _objBaseChummerKey.CreateSubKey("Sourcebook");
-            
+
             // Automatic Update.
             LoadBoolFromRegistry(ref _blnAutomaticUpdate, "autoupdate");
 
@@ -485,14 +503,22 @@ namespace Chummer
             get => _lifeModuleEnabled;
             set => _lifeModuleEnabled = value;
         }
-        
+
         /// <summary>
         /// Whether or not the app should use logging.
         /// </summary>
         public static bool UseLogging
         {
             get => _blnUseLogging;
-            set => _blnUseLogging = value;
+            set
+            {
+                if (_blnUseLogging != value)
+                {
+                    _blnUseLogging = value;
+                    // Sets up logging if the option is changed during runtime
+                    Log.IsLoggerEnabled = value;
+                }
+            }
         }
 
         /// <summary>

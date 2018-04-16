@@ -19,6 +19,7 @@
 using System;
 using System.Data;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Windows.Forms;
 using System.Xml;
 using Chummer.Backend.Equipment;
@@ -69,7 +70,7 @@ namespace Chummer
                 NullValue = null
             };
             dgvc_Cost.DefaultCellStyle = dataGridViewNuyenCellStyle;
-            
+
             if (_objCharacter.Created)
             {
                 chkHideOverAvailLimit.Visible = false;
@@ -157,13 +158,14 @@ namespace Chummer
 
                 _objSelectedWeapon.DiscountCost = chkBlackMarketDiscount.Checked;
 
-                lblWeaponReach.Text = _objSelectedWeapon.TotalReach.ToString();
+                lblWeaponReach.Text = _objSelectedWeapon.TotalReach.ToString(GlobalOptions.CultureInfo);
                 lblWeaponDamage.Text = _objSelectedWeapon.CalculatedDamage(GlobalOptions.CultureInfo, GlobalOptions.Language);
                 lblWeaponAP.Text = _objSelectedWeapon.TotalAP(GlobalOptions.Language);
                 lblWeaponMode.Text = _objSelectedWeapon.CalculatedMode(GlobalOptions.Language);
-                lblWeaponRC.Text = _objSelectedWeapon.TotalRC;
+                lblWeaponRC.Text = _objSelectedWeapon.TotalRC(GlobalOptions.CultureInfo, GlobalOptions.Language, true);
+                GlobalOptions.ToolTipProcessor.SetToolTip(lblWeaponRC, _objSelectedWeapon.RCToolTip);
                 lblWeaponAmmo.Text = _objSelectedWeapon.CalculatedAmmo(GlobalOptions.CultureInfo, GlobalOptions.Language);
-                lblWeaponAccuracy.Text = _objSelectedWeapon.TotalAccuracy.ToString();
+                lblWeaponAccuracy.Text = _objSelectedWeapon.DisplayAccuracy(GlobalOptions.CultureInfo, GlobalOptions.Language);
 
                 decimal decItemCost = 0;
                 if (chkFreeItem.Checked)
@@ -180,21 +182,21 @@ namespace Chummer
                 lblTest.Text = _objCharacter.AvailTest(decItemCost, objTotalAvail);
 
                 string strPage = _objSelectedWeapon.DisplayPage(GlobalOptions.Language);
-                lblSource.Text = CommonFunctions.LanguageBookShort(_objSelectedWeapon.Source, GlobalOptions.Language) + ' ' + strPage;
+                string strSpaceCharacter = LanguageManager.GetString("String_Space", GlobalOptions.Language);
+                lblSource.Text = CommonFunctions.LanguageBookShort(_objSelectedWeapon.Source, GlobalOptions.Language) + strSpaceCharacter + strPage;
 
                 // Build a list of included Accessories and Modifications that come with the weapon.
                 StringBuilder strAccessories = new StringBuilder();
                 foreach (WeaponAccessory objAccessory in _objSelectedWeapon.WeaponAccessories)
                 {
-                    strAccessories.Append(objAccessory.DisplayName(GlobalOptions.Language));
-                    strAccessories.Append('\n');
+                    strAccessories.AppendLine(objAccessory.DisplayName(GlobalOptions.Language));
                 }
                 if (strAccessories.Length > 0)
-                    strAccessories.Length -= 1;
+                    strAccessories.Length -= Environment.NewLine.Length;
 
                 lblIncludedAccessories.Text = strAccessories.Length == 0 ? LanguageManager.GetString("String_None", GlobalOptions.Language) : strAccessories.ToString();
 
-                tipTooltip.SetToolTip(lblSource, CommonFunctions.LanguageBookLong(_objSelectedWeapon.Source, GlobalOptions.Language) + ' ' + LanguageManager.GetString("String_Page", GlobalOptions.Language) + ' ' + strPage);
+                GlobalOptions.ToolTipProcessor.SetToolTip(lblSource, CommonFunctions.LanguageBookLong(_objSelectedWeapon.Source, GlobalOptions.Language) + strSpaceCharacter + LanguageManager.GetString("String_Page", GlobalOptions.Language) + strSpaceCharacter + strPage);
             }
             else
             {
@@ -205,6 +207,7 @@ namespace Chummer
                 lblWeaponAP.Text = string.Empty;
                 lblWeaponMode.Text = string.Empty;
                 lblWeaponRC.Text = string.Empty;
+                GlobalOptions.ToolTipProcessor.SetToolTip(lblWeaponRC, string.Empty);
                 lblWeaponAmmo.Text = string.Empty;
                 lblWeaponAccuracy.Text = string.Empty;
                 lblWeaponCost.Text = string.Empty;
@@ -212,7 +215,7 @@ namespace Chummer
                 lblTest.Text = string.Empty;
                 lblSource.Text = string.Empty;
                 lblIncludedAccessories.Text = string.Empty;
-                tipTooltip.SetToolTip(lblSource, string.Empty);
+                GlobalOptions.ToolTipProcessor.SetToolTip(lblSource, string.Empty);
             }
             _blnSkipUpdate = false;
         }
@@ -226,11 +229,9 @@ namespace Chummer
                 tabWeapons.Columns.Add("WeaponName");
                 tabWeapons.Columns.Add("Dice");
                 tabWeapons.Columns.Add("Accuracy");
-                tabWeapons.Columns["Accuracy"].DataType = typeof(int);
                 tabWeapons.Columns.Add("Damage");
                 tabWeapons.Columns.Add("AP");
                 tabWeapons.Columns.Add("RC");
-                tabWeapons.Columns["RC"].DataType = typeof(int);
                 tabWeapons.Columns.Add("Ammo");
                 tabWeapons.Columns.Add("Mode");
                 tabWeapons.Columns.Add("Reach");
@@ -260,42 +261,45 @@ namespace Chummer
 
                     string strID = objWeapon.SourceID.ToString("D");
                     string strWeaponName = objWeapon.DisplayName(GlobalOptions.Language);
-                    string strDice = objWeapon.GetDicePool(GlobalOptions.CultureInfo);
-                    int intAccuracy = objWeapon.TotalAccuracy;
+                    string strDice = objWeapon.GetDicePool(GlobalOptions.CultureInfo, GlobalOptions.Language);
+                    string strAccuracy = objWeapon.DisplayAccuracy(GlobalOptions.CultureInfo, GlobalOptions.Language);
                     string strDamage = objWeapon.CalculatedDamage(GlobalOptions.CultureInfo, GlobalOptions.Language);
                     string strAP = objWeapon.TotalAP(GlobalOptions.Language);
                     if (strAP == "-")
                         strAP = "0";
-                    int.TryParse(objWeapon.TotalRC, out int intRC);
+                    string strRC = objWeapon.TotalRC(GlobalOptions.CultureInfo, GlobalOptions.Language, true);
                     string strAmmo = objWeapon.CalculatedAmmo(GlobalOptions.CultureInfo, GlobalOptions.Language);
                     string strMode = objWeapon.CalculatedMode(GlobalOptions.Language);
                     string strReach = objWeapon.TotalReach.ToString();
-                    StringBuilder strAccessories = new StringBuilder();
+                    StringBuilder strbldAccessories = new StringBuilder();
                     foreach (WeaponAccessory objAccessory in objWeapon.WeaponAccessories)
                     {
-                        strAccessories.Append(objAccessory.DisplayName(GlobalOptions.Language));
-                        strAccessories.Append('\n');
+                        strbldAccessories.AppendLine(objAccessory.DisplayName(GlobalOptions.Language));
                     }
-                    if (strAccessories.Length > 0)
-                        strAccessories.Length -= 1;
+                    if (strbldAccessories.Length > 0)
+                        strbldAccessories.Length -= Environment.NewLine.Length;
                     AvailabilityValue objAvail = objWeapon.TotalAvailTuple();
                     SourceString strSource = new SourceString(objWeapon.Source, objWeapon.DisplayPage(GlobalOptions.Language));
                     NuyenString strCost = new NuyenString(objWeapon.DisplayCost(out decimal _));
 
-                    tabWeapons.Rows.Add(strID, strWeaponName, strDice, intAccuracy, strDamage, strAP, intRC, strAmmo, strMode, strReach, strAccessories.ToString(), objAvail, strSource, strCost);
+                    tabWeapons.Rows.Add(strID, strWeaponName, strDice, strAccuracy, strDamage, strAP, strRC, strAmmo, strMode, strReach, strbldAccessories.ToString(), objAvail, strSource, strCost);
                 }
 
                 DataSet set = new DataSet("weapons");
                 set.Tables.Add(tabWeapons);
-
-                if (cboCategory.SelectedValue == null || cboCategory.SelectedValue.ToString() == "Show All")
+                string strSelectedCategory = cboCategory.SelectedValue?.ToString();
+                if (string.IsNullOrEmpty(strSelectedCategory) || strSelectedCategory == "Show All")
                 {
                     dgvWeapons.Columns[5].Visible = true;
                     dgvWeapons.Columns[6].Visible = true;
                     dgvWeapons.Columns[7].Visible = true;
                     dgvWeapons.Columns[8].Visible = true;
                 }
-                else if (cboCategory.SelectedValue.ToString() == "Blades" || cboCategory.SelectedValue.ToString() == "Clubs" || cboCategory.SelectedValue.ToString() == "Improvised Weapons" || cboCategory.SelectedValue.ToString() == "Exotic Melee Weapons" || cboCategory.SelectedValue.ToString() == "Unarmed")
+                else if (strSelectedCategory == "Blades" ||
+                         strSelectedCategory == "Clubs" ||
+                         strSelectedCategory == "Improvised Weapons" ||
+                         strSelectedCategory == "Exotic Melee Weapons" ||
+                         strSelectedCategory == "Unarmed")
                 {
                     dgvWeapons.Columns[5].Visible = false;
                     dgvWeapons.Columns[6].Visible = false;
@@ -353,6 +357,7 @@ namespace Chummer
 
         private void cmdOK_Click(object sender, EventArgs e)
         {
+            _blnAddAgain = false;
             AcceptForm();
         }
 
@@ -369,7 +374,7 @@ namespace Chummer
         private void cmdOKAdd_Click(object sender, EventArgs e)
         {
             _blnAddAgain = true;
-            cmdOK_Click(sender, e);
+            AcceptForm();
         }
 
         private void chkFreeItem_CheckedChanged(object sender, EventArgs e)
@@ -602,6 +607,7 @@ namespace Chummer
 
         private void dgvWeapons_DoubleClick(object sender, EventArgs e)
         {
+            _blnAddAgain = false;
             AcceptForm();
         }
         #endregion

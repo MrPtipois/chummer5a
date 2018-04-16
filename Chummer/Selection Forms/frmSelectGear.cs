@@ -100,7 +100,7 @@ namespace Chummer
             }
 
             XPathNodeIterator objXmlCategoryList;
-            
+
             // Populate the Gear Category list.
             if (_setAllowedCategories.Count > 0)
             {
@@ -201,14 +201,6 @@ namespace Chummer
                 if (objXmlGear != null)
                 {
                     string strName = objXmlGear.SelectSingleNode("name")?.Value ?? string.Empty;
-                    // If a Grenade is selected, show the Aerodynamic checkbox.
-                    if (strName.StartsWith("Grenade:"))
-                        chkAerodynamic.Visible = true;
-                    else
-                    {
-                        chkAerodynamic.Visible = false;
-                        chkAerodynamic.Checked = false;
-                    }
 
                     // Quantity.
                     nudGearQty.Enabled = true;
@@ -226,7 +218,7 @@ namespace Chummer
                     }
                     if (strName.StartsWith("Nuyen"))
                     {
-                        int intDecimalPlaces = _objCharacter.Options.NuyenFormat.Length - 1 - _objCharacter.Options.NuyenFormat.LastIndexOf('.');
+                        int intDecimalPlaces = _objCharacter.Options.NuyenDecimals;
                         if (intDecimalPlaces <= 0)
                         {
                             nudGearQty.DecimalPlaces = 0;
@@ -257,16 +249,12 @@ namespace Chummer
                 {
                     nudGearQty.Enabled = false;
                     nudGearQty.Value = 1;
-                    chkAerodynamic.Visible = false;
-                    chkAerodynamic.Checked = false;
                 }
             }
             else
             {
                 nudGearQty.Enabled = false;
                 nudGearQty.Value = 1;
-                chkAerodynamic.Visible = false;
-                chkAerodynamic.Checked = false;
             }
 
             UpdateGearInfo();
@@ -288,6 +276,7 @@ namespace Chummer
 
         private void cmdOK_Click(object sender, EventArgs e)
         {
+            AddAgain = false;
             AcceptForm();
         }
 
@@ -303,13 +292,14 @@ namespace Chummer
 
         private void lstGear_DoubleClick(object sender, EventArgs e)
         {
+            AddAgain = false;
             AcceptForm();
         }
 
         private void cmdOKAdd_Click(object sender, EventArgs e)
         {
             AddAgain = true;
-            cmdOK_Click(sender, e);
+            AcceptForm();
         }
 
         private void nudGearQty_ValueChanged(object sender, EventArgs e)
@@ -388,6 +378,7 @@ namespace Chummer
         /// </summary>
         public bool ShowPositiveCapacityOnly
         {
+            get => _blnShowPositiveCapacityOnly;
             set
             {
                 _blnShowPositiveCapacityOnly = value;
@@ -401,6 +392,7 @@ namespace Chummer
         /// </summary>
         public bool ShowNegativeCapacityOnly
         {
+            get => _blnShowNegativeCapacityOnly;
             set
             {
                 _blnShowNegativeCapacityOnly = value;
@@ -414,6 +406,7 @@ namespace Chummer
         /// </summary>
         public bool ShowArmorCapacityOnly
         {
+            get => _blnShowArmorCapacityOnly;
             set => _blnShowArmorCapacityOnly = value;
         }
 
@@ -444,7 +437,7 @@ namespace Chummer
             set
             {
                 _decMaximumCapacity = value;
-                lblMaximumCapacity.Text = LanguageManager.GetString("Label_MaximumCapacityAllowed", GlobalOptions.Language) + ' ' + _decMaximumCapacity.ToString("#,0.##", GlobalOptions.CultureInfo);
+                lblMaximumCapacity.Text = LanguageManager.GetString("Label_MaximumCapacityAllowed", GlobalOptions.Language) + LanguageManager.GetString("String_Space", GlobalOptions.Language) + _decMaximumCapacity.ToString("#,0.##", GlobalOptions.CultureInfo);
             }
         }
 
@@ -490,11 +483,6 @@ namespace Chummer
         }
 
         /// <summary>
-        /// Whether or not a Grenade is Aerodynamic.
-        /// </summary>
-        public bool Aerodynamic => chkAerodynamic.Checked;
-
-        /// <summary>
         /// Whether or not the selected Vehicle is used.
         /// </summary>
         public bool BlackMarketDiscount => _blnBlackMarketDiscount;
@@ -529,7 +517,7 @@ namespace Chummer
                 nudRating.Minimum = 0;
                 nudRating.Maximum = 0;
                 nudRating.Enabled = false;
-                tipTooltip.SetToolTip(lblSource, string.Empty);
+                GlobalOptions.ToolTipProcessor.SetToolTip(lblSource, string.Empty);
                 return;
             }
 
@@ -548,7 +536,7 @@ namespace Chummer
                 nudRating.Minimum = 0;
                 nudRating.Maximum = 0;
                 nudRating.Enabled = false;
-                tipTooltip.SetToolTip(lblSource, string.Empty);
+                GlobalOptions.ToolTipProcessor.SetToolTip(lblSource, string.Empty);
                 return;
             }
 
@@ -557,8 +545,9 @@ namespace Chummer
 
             string strSource = objXmlGear.SelectSingleNode("source")?.Value ?? LanguageManager.GetString("String_Unknown", GlobalOptions.Language);
             string strPage = objXmlGear.SelectSingleNode("altpage")?.Value ?? objXmlGear.SelectSingleNode("page")?.Value ?? LanguageManager.GetString("String_Unknown", GlobalOptions.Language);
-            lblSource.Text = CommonFunctions.LanguageBookShort(strSource, GlobalOptions.Language) + ' ' + strPage;
-            tipTooltip.SetToolTip(lblSource, CommonFunctions.LanguageBookLong(strSource, GlobalOptions.Language) + ' ' + LanguageManager.GetString("String_Page", GlobalOptions.Language) + ' ' + strPage);
+            string strSpaceCharacter = LanguageManager.GetString("String_Space", GlobalOptions.Language);
+            lblSource.Text = CommonFunctions.LanguageBookShort(strSource, GlobalOptions.Language) + strSpaceCharacter + strPage;
+            GlobalOptions.ToolTipProcessor.SetToolTip(lblSource, CommonFunctions.LanguageBookLong(strSource, GlobalOptions.Language) + strSpaceCharacter + LanguageManager.GetString("String_Page", GlobalOptions.Language) + ' ' + strPage);
 
             // Extract the Avil and Cost values from the Gear info since these may contain formulas and/or be based off of the Rating.
             // This is done using XPathExpression.
@@ -724,7 +713,7 @@ namespace Chummer
 
             // Capacity.
             // XPathExpression cannot evaluate while there are square brackets, so remove them if necessary.
-            string strCapacityField = _blnShowArmorCapacityOnly ? "armorcapacity" : "capacity";
+            string strCapacityField = ShowArmorCapacityOnly ? "armorcapacity" : "capacity";
 
             if (_eCapacityStyle == CapacityStyle.Zero)
                 lblCapacity.Text = '[' + 0.ToString(GlobalOptions.CultureInfo) + ']';
@@ -896,19 +885,19 @@ namespace Chummer
                     strFilter.Append(" and (" + objCategoryFilter.ToString().TrimEndOnce(" or ") + ')');
                 }
             }
-            if (_blnShowArmorCapacityOnly)
-                strFilter.Append(" and contains(armorcapacity, \"[\")");
-            else if (_blnShowPositiveCapacityOnly)
-                strFilter.Append(" and not(contains(capacity, \"[\"))");
-            else if (_blnShowNegativeCapacityOnly)
-                strFilter.Append(" and contains(capacity, \"[\")");
+            if (ShowArmorCapacityOnly)
+                strFilter.Append(" and (contains(armorcapacity, \"[\") or category = \"Custom\")");
+            else if (ShowPositiveCapacityOnly)
+                strFilter.Append(" and (not(contains(capacity, \"[\")) or category = \"Custom\")");
+            else if (ShowNegativeCapacityOnly)
+                strFilter.Append(" and (contains(capacity, \"[\") or category = \"Custom\")");
             if (_objParentNode == null)
                 strFilter.Append(" and not(requireparent)");
             foreach (string strPrefix in ForceItemPrefixStrings)
                 strFilter.Append(" and starts-with(name,\"" + strPrefix + "\")");
 
             strFilter.Append(CommonFunctions.GenerateSearchXPath(txtSearch.Text));
-            
+
             return BuildGearList(_xmlBaseGearDataNode.Select("gears/gear[" + strFilter + "]"), blnDoUIUpdate, blnTerminateAfterFirst);
         }
 
@@ -953,7 +942,7 @@ namespace Chummer
                         continue;
                     }
                 }
-                
+
                 if (!blnDoUIUpdate && blnTerminateAfterFirst)
                 {
                     lstGears.Add(new ListItem(string.Empty, string.Empty));

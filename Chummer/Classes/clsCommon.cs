@@ -646,7 +646,7 @@ namespace Chummer
             return null;
         }
         #endregion
-        
+
         /// <summary>
         /// Book code (using the translated version if applicable).
         /// </summary>
@@ -725,6 +725,52 @@ namespace Chummer
                 "\"))");
         }
 
+        /// <summary>
+        /// Convert Force, 1D6, or 2D6 into a usable value.
+        /// </summary>
+        /// <param name="strIn">Expression to convert.</param>
+        /// <param name="intForce">Force value to use.</param>
+        /// <param name="intOffset">Dice offset.</param>
+        /// <returns></returns>
+        public static int ExpressionToInt(string strIn, int intForce, int intOffset)
+        {
+            if (string.IsNullOrWhiteSpace(strIn))
+                return intOffset;
+            int intValue = 1;
+            string strForce = intForce.ToString();
+            // This statement is wrapped in a try/catch since trying 1 div 2 results in an error with XSLT.
+            try
+            {
+                object objProcess = EvaluateInvariantXPath(strIn.Replace("/", " div ").Replace("F", strForce).Replace("1D6", strForce).Replace("2D6", strForce), out bool blnIsSuccess);
+                if (blnIsSuccess)
+                    intValue = Convert.ToInt32(Math.Ceiling((double)objProcess));
+            }
+            catch (OverflowException) { } // Result is text and not a double
+            catch (InvalidCastException) { }
+
+            intValue += intOffset;
+            if (intForce > 0)
+            {
+                if (intValue < 1)
+                    return 1;
+            }
+            else if (intValue < 0)
+                return 0;
+            return intValue;
+        }
+
+        /// <summary>
+        /// Convert Force, 1D6, or 2D6 into a usable value.
+        /// </summary>
+        /// <param name="strIn">Expression to convert.</param>
+        /// <param name="intForce">Force value to use.</param>
+        /// <param name="intOffset">Dice offset.</param>
+        /// <returns></returns>
+        public static string ExpressionToString(string strIn, int intForce, int intOffset)
+        {
+            return ExpressionToInt(strIn, intForce, intOffset).ToString();
+        }
+
         #region PDF Functions
         /// <summary>
         /// Opens a PDF file using the provided source information.
@@ -756,7 +802,30 @@ namespace Chummer
             if (string.IsNullOrWhiteSpace(strPDFAppPath))
                 return;
 
-            string[] strTemp = strSource.Split(' ');
+            string strSpaceCharacter = LanguageManager.GetString("String_Space", GlobalOptions.Language);
+            string[] strTemp;
+            if (!string.IsNullOrEmpty(strSpaceCharacter))
+                strTemp = strSource.Split(strSpaceCharacter[0]);
+            else if (strSource.StartsWith("SR5"))
+            {
+                strTemp = new string[] { "SR5", strSource.Substring(3) };
+            }
+            else if (strSource.StartsWith("R5"))
+            {
+                strTemp = new string[] { "R5", strSource.Substring(3) };
+            }
+            else
+            {
+                int i = strSource.Length - 1;
+                for (; i >= 0; --i)
+                {
+                    if (!char.IsNumber(strSource, i))
+                    {
+                        break;
+                    }
+                }
+                strTemp = new string[] { strSource.Substring(0, i), strSource.Substring(i) };
+            }
             if (strTemp.Length < 2)
                 return;
             if (!int.TryParse(strTemp[1], out int intPage))
@@ -981,32 +1050,32 @@ namespace Chummer
                 if (blnTitleWithColon)
                     return string.Join(" ", strArray, intTitleIndex, intBlockEndIndex - intTitleIndex);
                 // add the title
-                string strResultContent = strArray[intTitleIndex] + '\n';
+                string strResultContent = strArray[intTitleIndex] + Environment.NewLine;
                 // if we have extra info add it keeping the line breaks
                 if (intExtraAllCapsInfo > 0)
-                    strResultContent += string.Join("\n", strArray, intTitleIndex + 1, intExtraAllCapsInfo) + '\n';
+                    strResultContent += string.Join(Environment.NewLine, strArray, intTitleIndex + 1, intExtraAllCapsInfo) + Environment.NewLine;
                 int intContentStartIndex = intTitleIndex + intExtraAllCapsInfo + 1;
                 // this is the best we can do for now, it will still mangle spell blocks a bit
                 for (int i = intContentStartIndex; i < intBlockEndIndex; i++)
                 {
                     string strContentString = strArray[i];
-                    switch (strContentString.Last())
+                    if (strContentString.Length > 0)
                     {
-                        case '-':
-                            strResultContent += strContentString.Substring(0, strContentString.Length - 1);
-                            break;
-                        case '.':
-                        case '!':
-                        case '?':
-                            strResultContent += strContentString + '\n';
-                            break;
-                        default:
+                        char chrLastChar = strContentString[strContentString.Length - 1];
+                        if (char.IsPunctuation(chrLastChar))
+                        {
+                            if (chrLastChar == '-')
+                                strResultContent += strContentString.Substring(0, strContentString.Length - 1);
+                            else
+                                strResultContent += strContentString + Environment.NewLine;
+                        }
+                        else
+                        {
                             strResultContent += strContentString + ' ';
-                            break;
+                        }
                     }
                 }
-                // In tooltips linebreaks should follow windows style \r\n
-                return strResultContent.Replace("\n", Environment.NewLine);
+                return strResultContent;
             }
             return string.Empty;
         }

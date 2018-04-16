@@ -407,7 +407,11 @@
     </string>
     <string>
       <key>String_Of</key>
-      <text>of</text>
+      <text xml:space="preserve"> of </text>
+    </string>
+    <string>
+      <key>String_Space</key>
+      <text xml:space="preserve"> </text>
     </string>
     <string>
       <key>String_Remaining</key>
@@ -494,6 +498,26 @@
       <text>LP:</text>
     </string>
     <string>
+      <key>Label_BonusLP</key>
+      <text>Bonus LP:</text>
+    </string>
+    <string>
+      <key>Label_QualityLP</key>
+      <text>Quality LP:</text>
+    </string>
+    <string>
+      <key>Label_QualityCost</key>
+      <text>Quality Cost:</text>
+    </string>
+    <string>
+      <key>Label_QualitySource</key>
+      <text>Quality Source:</text>
+    </string>
+    <string>
+      <key>Checkbox_Randomize1D6</key>
+      <text>Randomize 1D6</text>
+    </string>
+    <string>
       <key>Label_KarmaRemaining</key>
       <text>Karma Remaining:</text>
     </string>
@@ -525,6 +549,10 @@
       <key>Label_Speed</key>
       <text>Speed:</text>
     </string>
+	<string>
+      <key>String_Handling</key>
+      <text>Handling</text>
+    </string>
     <string>
       <key>Label_Response</key>
       <text>Response:</text>
@@ -541,6 +569,10 @@
       <key>Label_Body</key>
       <text>Body:</text>
     </string>
+	<string>
+	  <key>String_VehicleBody</key>
+	  <text>Body</text>
+	</string>
     <string>
       <key>Label_Armor</key>
       <text>Armor:</text>
@@ -552,6 +584,10 @@
     <string>
       <key>Label_Sensor</key>
       <text>Sensor:</text>
+    </string>
+	<string>
+      <key>String_Sensor</key>
+      <text>Sensor</text>
     </string>
     <string>
       <key>Label_Avail</key>
@@ -1241,7 +1277,7 @@
     </string>
     <string>
       <key>About_Label_Disclaimer_Text</key>
-      <text>Chummer is completely unofficial and is in no way endorsed by The Topps Company, Inc. or Catalyst Game Labs. The Topps Company, Inc. has sole ownership of the names, logo, artwork, marks, photographs, sounds, audio, video and/or any proprietary material used in connection with the game Shadowrun.\n\r\n\rUnless agreed to in writing, the developer provides the Work (and each Contributor provides its Contributions) on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either expressed or implied, including, without limitation, any warranties or conditions of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A PARTICULAR PURPOSE.\n\r\n\rBy using Chummer You agree that You legally own a copy of the Shadowrun rulebook and any sourcebook whose information you select to use. You are solely responsible for determining the appropriateness of using or redistributing the content You create and assume any risks associated with Your exercise of permissions under this License.\n\r\n\rChummer uses icons from the Silk icon set made by Mark James which is available at www.famfamfam.com.</text>
+      <text>Chummer is completely unofficial and is in no way endorsed by The Topps Company, Inc. or Catalyst Game Labs. The Topps Company, Inc. has sole ownership of the names, logo, artwork, marks, photographs, sounds, audio, video and/or any proprietary material used in connection with the game Shadowrun.\n\r\n\rUnless agreed to in writing, the developer provides the Work (and each Contributor provides its Contributions) on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either expressed or implied, including, without limitation, any warranties or conditions of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A PARTICULAR PURPOSE.\n\r\n\rBy using Chummer You agree that You legally own a copy of the Shadowrun rulebook and any sourcebook whose information you select to use. You are solely responsible for determining the appropriateness of using or redistributing the content You create and assume any risks associated with Your exercise of permissions under this License.\n\r\n\rChummer uses icons from the Silk icon set made by Mark James which is available at www.famfamfam.com.</text>
     </string>
     <!-- End Region -->
     <!-- Region Character Roster -->
@@ -1952,10 +1988,6 @@
       <text>You must select a Martial Art to which to add a Technique.</text>
     </string>
     <string>
-      <key>Message_SelectLimitModifier</key>
-      <text>You must select a Limit to which to add a Modifier.</text>
-    </string>
-    <string>
       <key>MessageTitle_SelectMartialArtTechnique</key>
       <text>Select Martial Art</text>
     </string>
@@ -2017,7 +2049,7 @@
     </string>
     <string>
       <key>Message_RegisteredSpriteLimit</key>
-      <text>Your number of registered Sprites cannot exceed your CHA score.</text>
+      <text>Your number of registered Sprites cannot exceed your LOG score.</text>
     </string>
     <string>
       <key>MessageTitle_RegisteredSpriteLimit</key>
@@ -2032,16 +2064,12 @@
       <text>Cannot Remove Cyberware</text>
     </string>
     <string>
-      <key>Message_ComplexFormLimitCareer</key>
-      <text>Your number of Complex Forms cannot exceed your RES × 2 score.</text>
-    </string>        
-    <string>
       <key>Message_ComplexFormLimit</key>
-      <text>Your number of Complex Forms cannot exceed your LOG score during Character Generation.</text>
+      <text>Your cannot have more complex forms than twice your RES score. Ref: Page 98, SR5 Core (Errata'd).</text>
     </string>
     <string>
       <key>Message_PriorityComplexFormLimit</key>
-      <text>Your number of Complex Forms cannot exceed the number defined by your selected Talent priority.</text>
+      <text>Your cannot have more complex forms than allowed by your selected Talent priority.</text>
     </string>
     <string>
       <key>MessageTitle_ComplexFormLimit</key>
@@ -2940,7 +2968,7 @@
       <text>Alchemical</text>
     </string>
     <string>
-      <key>String_AttributePilot</key>
+      <key>String_Pilot</key>
       <text>Pilot</text>
     </string>
     <string>
@@ -3235,6 +3263,14 @@
     <string>
       <key>String_ExpenseLifestyle</key>
       <text>Purchased Lifestyle</text>
+    </string>
+    <string>
+      <key>String_ExpenseDecreaseLifestyle</key>
+      <text>Decremented Lifestyle</text>
+    </string>
+    <string>
+      <key>String_ExpenseModifiedLifestyle</key>
+      <text>Modified Lifestyle</text>
     </string>
     <string>
       <key>String_ExpensePurchaseCyberware</key>
@@ -3874,6 +3910,10 @@
       <key>Button_SwapQuality</key>
       <text>Swap Quality</text>
     </string>
+    <string>
+      <key>Button_DeleteQuality</key>
+      <text>Delete Quality</text>
+    </string>
 	<string>
 		<key>Label_QualityLevel</key>
 		<text>Quality Level:</text>
@@ -4440,16 +4480,32 @@ Only one attribute may be at its Maximum value during character creation.</text>
       <text>Add Initiate Grade</text>
     </string>
     <string>
+      <key>Button_RemoveInitiateGrade</key>
+      <text>Remove Initiate Grade</text>
+    </string>
+    <string>
       <key>Button_AddSubmersionGrade</key>
       <text>Add Submersion Grade</text>
+    </string>
+    <string>
+      <key>Button_RemoveSubmersionGrade</key>
+      <text>Remove Submersion Grade</text>
     </string>
     <string>
       <key>Button_AddMetamagic</key>
       <text>Add Metamagic</text>
     </string>
     <string>
+      <key>Button_RemoveMetamagic</key>
+      <text>Remove Metamagic</text>
+    </string>
+    <string>
       <key>Button_AddEcho</key>
       <text>Add Echo</text>
+    </string>
+    <string>
+      <key>Button_RemoveEcho</key>
+      <text>Remove Echo</text>
     </string>
     <!-- End Region-->
     <!-- Region Cyberware Tab -->
@@ -5815,6 +5871,10 @@ Only one attribute may be at its Maximum value during character creation.</text>
     <string>
       <key>Tip_Skill_Wounds</key>
       <text>Wounds</text>
+    </string>
+	<string>
+      <key>Tip_Skill_OffHand</key>
+      <text>Off Hand</text>
     </string>
     <string>
       <key>Tip_Skill_Cannot_Default</key>
@@ -7547,11 +7607,11 @@ Only one attribute may be at its Maximum value during character creation.</text>
       <text>Lifestyle:</text>
     </string>
     <string>
-      <key>Label_SelectAdvancedLifestyle_PositiveQualities</key>
+      <key>Node_SelectAdvancedLifestyle_PositiveQualities</key>
       <text>Positive Qualities</text>
     </string>
     <string>
-      <key>Label_SelectAdvancedLifestyle_NegativeQualities</key>
+      <key>Node_SelectAdvancedLifestyle_NegativeQualities</key>
       <text>Negative Qualities</text>
     </string>
     <string>
@@ -7607,12 +7667,28 @@ Only one attribute may be at its Maximum value during character creation.</text>
       <text>Lifestyle Name</text>
     </string>
     <string>
+      <key>Message_SelectAdvancedLifestyle_OverLPLimit</key>
+      <text>Too many Lifestyle Points have been spent to allow this lifestyle.</text>
+    </string>
+    <string>
+      <key>MessageTitle_SelectAdvancedLifestyle_OverLPLimit</key>
+      <text>Over LP Limit</text>
+    </string>
+    <string>
       <key>Label_SelectAdvancedLifestyle_TrustFund</key>
       <text>Trust Fund</text>
     </string>
     <string>
       <key>Label_SelectAdvancedLifestyle_Tenant</key>
       <text>Primary Tenant</text>
+    </string>
+    <string>
+      <key>Label_SelectAdvancedLifestyle_LPContribution</key>
+      <text>Contributes to Lifestyle Points</text>
+    </string>
+    <string>
+      <key>Label_Options_KarmaMysticAdeptPowerPoint</key>
+      <text>Mystic Adept Power Point</text>
     </string>
     <!-- End Region-->
     <!-- Region Select Armor Window -->
@@ -8512,6 +8588,10 @@ Only one attribute may be at its Maximum value during character creation.</text>
     <string>
       <key>Warning_Update_CouldNotConnect</key>
       <text>Chummer was unable to connect to the update server. Please check your firewall and proxy settings.</text>
+    </string>
+    <string>
+      <key>Warning_Update_CouldNotConnectException</key>
+      <text>Chummer was unable to connect to the update server. Please check your firewall and proxy settings.\n\nError Message:\n{0}.</text>
     </string>
 	<string>
       <key>Button_Download</key>

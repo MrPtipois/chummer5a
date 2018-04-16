@@ -17,13 +17,17 @@
  *  https://github.com/chummer5a/chummer5a
  */
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
+using System.Drawing;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Xml;
 using Chummer.Annotations;
+using Chummer.Backend.Attributes;
 using Chummer.Backend.Skills;
 // ReSharper disable SpecifyACultureInStringConversionExplicitly
 
@@ -33,11 +37,13 @@ namespace Chummer
     /// <summary>
     /// An Adept Power.
     /// </summary>
-    public class Power : INotifyPropertyChanged, IHasInternalId, IHasName, IHasXmlNode
+    [DebuggerDisplay("{DisplayNameMethod(GlobalOptions.DefaultLanguage)}")]
+    public class Power : INotifyMultiplePropertyChanged, IHasInternalId, IHasName, IHasXmlNode, IHasNotes
     {
         private Guid _guiID;
         private Guid _sourceID = Guid.Empty;
         private string _strName = string.Empty;
+        private string _strExtra = string.Empty;
         private string _strSource = string.Empty;
         private string _strPage = string.Empty;
         private string _strPointsPerLevel = "0";
@@ -48,12 +54,13 @@ namespace Chummer
         private bool _blnDiscountedGeas;
         private XmlNode _nodAdeptWayRequirements;
         private string _strNotes = string.Empty;
-        private bool _blnFree;
-        private int _intFreeLevels;
         private string _strAdeptWayDiscount = "0";
         private string _strBonusSource = string.Empty;
         private decimal _decFreePoints;
-        private string _displayPoints = string.Empty;
+        private string _strCachedPowerPoints = string.Empty;
+        private bool _blnLevelsEnabled;
+        private int _intRating = 1;
+        private int _cachedLearnedRating;
 
         #region Constructor, Create, Save, Load, and Print Methods
         public Power(Character objCharacter)
@@ -61,6 +68,29 @@ namespace Chummer
             // Create the GUID for the new Power.
             _guiID = Guid.NewGuid();
             CharacterObject = objCharacter;
+            CharacterObject.PropertyChanged += OnCharacterChanged;
+            if (CharacterObject.Options.MysAdeptSecondMAGAttribute && CharacterObject.IsMysticAdept)
+            {
+                MAGAttributeObject = CharacterObject.MAGAdept;
+            }
+            else
+            {
+                MAGAttributeObject = CharacterObject.MAG;
+            }
+        }
+
+        public void UnbindPower()
+        {
+            CharacterObject.PropertyChanged -= OnCharacterChanged;
+            MAGAttributeObject = null;
+            BoostedSkill = null;
+        }
+
+        public void DeletePower()
+        {
+            ImprovementManager.RemoveImprovements(CharacterObject, Improvement.ImprovementSource.Power, InternalId);
+            CharacterObject.Powers.Remove(this);
+            UnbindPower();
         }
 
         /// <summary>
@@ -77,9 +107,9 @@ namespace Chummer
             objWriter.WriteElementString("pointsperlevel", _strPointsPerLevel);
             objWriter.WriteElementString("adeptway", _strAdeptWayDiscount);
             objWriter.WriteElementString("action", _strAction);
-            objWriter.WriteElementString("rating", Rating.ToString());
+            objWriter.WriteElementString("rating", _intRating.ToString());
             objWriter.WriteElementString("extrapointcost", _decExtraPointCost.ToString(GlobalOptions.InvariantCultureInfo));
-            objWriter.WriteElementString("levels", LevelsEnabled.ToString());
+            objWriter.WriteElementString("levels", _blnLevelsEnabled.ToString());
             objWriter.WriteElementString("maxlevel", _intMaxLevel.ToString(GlobalOptions.InvariantCultureInfo));
             objWriter.WriteElementString("discounted", _blnDiscountedAdeptWay.ToString());
             objWriter.WriteElementString("discountedgeas", _blnDiscountedGeas.ToString());
@@ -87,8 +117,6 @@ namespace Chummer
             objWriter.WriteElementString("freepoints", _decFreePoints.ToString(GlobalOptions.InvariantCultureInfo));
             objWriter.WriteElementString("source", _strSource);
             objWriter.WriteElementString("page", _strPage);
-            objWriter.WriteElementString("free", _blnFree.ToString());
-            objWriter.WriteElementString("freelevels", _intFreeLevels.ToString(GlobalOptions.InvariantCultureInfo));
             if (Bonus != null)
                 objWriter.WriteRaw("<bonus>" + Bonus.InnerXml + "</bonus>");
             else
@@ -115,8 +143,8 @@ namespace Chummer
             _objCachedMyXmlNode = null;
             objNode.TryGetStringFieldQuickly("points", ref _strPointsPerLevel);
             objNode.TryGetStringFieldQuickly("adeptway", ref _strAdeptWayDiscount);
-            LevelsEnabled = objNode["levels"]?.InnerText == bool.TrueString;
-            Rating = intRating;
+            objNode.TryGetBoolFieldQuickly("levels", ref _blnLevelsEnabled);
+            _intRating = intRating;
             if (!objNode.TryGetStringFieldQuickly("altnotes", ref _strNotes))
                 objNode.TryGetStringFieldQuickly("notes", ref _strNotes);
             objNode.TryGetInt32FieldQuickly("maxlevels", ref _intMaxLevel);
@@ -153,9 +181,7 @@ namespace Chummer
                 if (!ImprovementManager.CreateImprovements(CharacterObject, Improvement.ImprovementSource.Power, InternalId, Bonus, false, TotalRating, DisplayNameShort(GlobalOptions.Language)))
                 {
                     ImprovementManager.ForcedValue = strOldForce;
-                    Deleting = true;
-                    CharacterObject.Powers.Remove(this);
-                    OnPropertyChanged(nameof(TotalRating));
+                    DeletePower();
                     return false;
                 }
                 Extra = ImprovementManager.SelectedValue;
@@ -165,7 +191,6 @@ namespace Chummer
             if (TotalMaximumLevels < Rating)
             {
                 Rating = TotalMaximumLevels;
-                OnPropertyChanged(nameof(TotalRating));
             }
             return true;
         }
@@ -207,11 +232,9 @@ namespace Chummer
                     strPowerName = strPowerName.Substring(0, intPos - 1);
                 _strAdeptWayDiscount = XmlManager.Load("powers.xml").SelectSingleNode("/chummer/powers/power[starts-with(./name,\"" + strPowerName + "\")]/adeptway")?.InnerText ?? string.Empty;
             }
-            Rating = Convert.ToInt32(objNode["rating"]?.InnerText);
-            LevelsEnabled = objNode["levels"]?.InnerText == bool.TrueString;
-            objNode.TryGetBoolFieldQuickly("free", ref _blnFree);
+            objNode.TryGetInt32FieldQuickly("rating", ref _intRating);
+            objNode.TryGetBoolFieldQuickly("levels", ref _blnLevelsEnabled);
             objNode.TryGetInt32FieldQuickly("maxlevel", ref _intMaxLevel);
-            objNode.TryGetInt32FieldQuickly("freelevels", ref _intFreeLevels);
             objNode.TryGetBoolFieldQuickly("discounted", ref _blnDiscountedAdeptWay);
             objNode.TryGetBoolFieldQuickly("discountedgeas", ref _blnDiscountedGeas);
             objNode.TryGetStringFieldQuickly("bonussource", ref _strBonusSource);
@@ -289,6 +312,44 @@ namespace Chummer
         /// </summary>
         public Character CharacterObject { get; }
 
+        private CharacterAttrib _objMAGAttribute;
+        /// <summary>
+        /// MAG Attribute this skill primarily depends on
+        /// </summary>
+        public CharacterAttrib MAGAttributeObject
+        {
+            get => _objMAGAttribute;
+            protected set
+            {
+                if (_objMAGAttribute != value)
+                {
+                    if (_objMAGAttribute != null)
+                        _objMAGAttribute.PropertyChanged -= OnLinkedAttributeChanged;
+                    if (value != null)
+                        value.PropertyChanged += OnLinkedAttributeChanged;
+                    _objMAGAttribute = value;
+                }
+            }
+        }
+
+        private Skill _objBoostedSkill;
+
+        public Skill BoostedSkill
+        {
+            get => _objBoostedSkill;
+            protected set
+            {
+                if (_objBoostedSkill != value)
+                {
+                    if (_objBoostedSkill != null)
+                        _objBoostedSkill.PropertyChanged -= OnBoostedSkillChanged;
+                    if (value != null)
+                        value.PropertyChanged += OnBoostedSkillChanged;
+                    _objBoostedSkill = value;
+                }
+            }
+        }
+
         /// <summary>
         /// Internal identifier which will be used to identify this Power in the Improvement system.
         /// </summary>
@@ -300,13 +361,41 @@ namespace Chummer
         public string Name
         {
             get => _strName;
-            set => _strName = value;
+            set
+            {
+                if (_strName != value)
+                {
+                    if (Name == "Improved Ability (skill)")
+                    {
+                        BoostedSkill = null;
+                    }
+                    else if (value == "Improved Ability (skill)")
+                    {
+                        BoostedSkill = CharacterObject.SkillsSection.GetActiveSkill(Extra);
+                    }
+                    _strName = value;
+                }
+            }
         }
 
         /// <summary>
         /// Extra information that should be applied to the name, like a linked CharacterAttribute.
         /// </summary>
-        public string Extra { get; set; } = string.Empty;
+        public string Extra
+        {
+            get => _strExtra;
+            set
+            {
+                if (_strExtra != value)
+                {
+                    _strExtra = value;
+                    if (Name == "Improved Ability (skill)")
+                    {
+                        BoostedSkill = CharacterObject.SkillsSection.GetActiveSkill(value);
+                    }
+                }
+            }
+        }
 
         /// <summary>
         /// The Enhancements currently applied to the Power.
@@ -343,7 +432,7 @@ namespace Chummer
             if (!string.IsNullOrEmpty(Extra))
             {
                 // Attempt to retrieve the CharacterAttribute name.
-                strReturn += " (" + LanguageManager.TranslateExtra(Extra, strLanguage) + ')';
+                strReturn += LanguageManager.GetString("String_Space", strLanguage) + '(' + LanguageManager.TranslateExtra(Extra, strLanguage) + ')';
             }
 
             return strReturn;
@@ -359,17 +448,32 @@ namespace Chummer
                 decimal decReturn = Convert.ToDecimal(_strPointsPerLevel, GlobalOptions.InvariantCultureInfo);
                 return decReturn;
             }
-            set => _strPointsPerLevel = value.ToString(GlobalOptions.InvariantCultureInfo);
+            set
+            {
+                string strNewValue = value.ToString(GlobalOptions.InvariantCultureInfo);
+                if (_strPointsPerLevel != strNewValue)
+                {
+                    _strPointsPerLevel = strNewValue;
+                    OnPropertyChanged();
+                }
+            }
         }
 
         /// <summary>
-        /// An additional cost on top of the power's PointsPerLevel. 
-        /// Example: Improved Reflexes is properly speaking Rating + 0.5, but the math for that gets weird. 
+        /// An additional cost on top of the power's PointsPerLevel.
+        /// Example: Improved Reflexes is properly speaking Rating + 0.5, but the math for that gets weird.
         /// </summary>
         public decimal ExtraPointCost
         {
             get => _decExtraPointCost;
-            set => _decExtraPointCost = value;
+            set
+            {
+                if (_decExtraPointCost != value)
+                {
+                    _decExtraPointCost = value;
+                    OnPropertyChanged();
+                }
+            }
         }
 
         /// <summary>
@@ -382,7 +486,15 @@ namespace Chummer
                 decimal decReturn = Convert.ToDecimal(_strAdeptWayDiscount, GlobalOptions.InvariantCultureInfo);
                 return decReturn;
             }
-            set => _strAdeptWayDiscount = value.ToString(GlobalOptions.InvariantCultureInfo);
+            set
+            {
+                string strNewValue = value.ToString(GlobalOptions.InvariantCultureInfo);
+                if (_strAdeptWayDiscount != strNewValue)
+                {
+                    _strAdeptWayDiscount = strNewValue;
+                    OnPropertyChanged();
+                }
+            }
         }
 
         /// <summary>
@@ -393,25 +505,36 @@ namespace Chummer
         /// <summary>
         /// Calculate the discount that is applied to the Power.
         /// </summary>
-        private decimal Discount => _blnDiscountedAdeptWay ? AdeptWayDiscount : 0;
+        private decimal Discount => DiscountedAdeptWay ? AdeptWayDiscount : 0;
 
         /// <summary>
         /// The current Rating of the Power.
         /// </summary>
-        public int Rating { get; set; }
+        public int Rating
+        {
+            get => _intRating;
+            set
+            {
+                if (_intRating != value)
+                {
+                    _intRating = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
 
         /// <summary>
-        /// The current Rating of the Power, including any Free Levels. 
+        /// The current Rating of the Power, including any Free Levels.
         /// </summary>
         public int TotalRating
         {
             get => Math.Min(Rating + FreeLevels, TotalMaximumLevels);
-            set
-            {
-                Rating = Math.Max(value - FreeLevels, 0);
-                OnPropertyChanged();
-            }
+            set => Rating = Math.Max(value - FreeLevels, 0);
         }
+
+        public bool DoesNotHaveFreeLevels => FreeLevels == 0;
+
+        private int _intCachedFreeLevels = int.MinValue;
 
         /// <summary>
         /// Free levels of the power.
@@ -420,10 +543,13 @@ namespace Chummer
         {
             get
             {
+                if (_intCachedFreeLevels != int.MinValue)
+                    return _intCachedFreeLevels;
+
                 decimal decExtraCost = FreePoints;
                 // Rating does not include free levels from improvements, and those free levels can be used to buy the first level of a power so that Qi Foci, so need to check for those first
                 int intReturn = CharacterObject.Improvements.Where(objImprovement => objImprovement.ImproveType == Improvement.ImprovementType.AdeptPowerFreeLevels && objImprovement.ImprovedName == Name && objImprovement.UniqueName == Extra && objImprovement.Enabled).Sum(objImprovement => objImprovement.Rating);
-                // The power has an extra cost, so free PP from things like Qi Foci have to be charged first. 
+                // The power has an extra cost, so free PP from things like Qi Foci have to be charged first.
                 if (Rating + intReturn == 0 && ExtraPointCost > 0)
                 {
                     decExtraCost -= (PointsPerLevel + ExtraPointCost);
@@ -444,13 +570,11 @@ namespace Chummer
                         intReturn += 1;
                     }
                 }
-                int intMAG = CharacterObject.MAG.TotalValue;
-                if (CharacterObject.Options.MysAdeptSecondMAGAttribute && CharacterObject.IsMysticAdept)
-                    intMAG = CharacterObject.MAGAdept.TotalValue;
-                return Math.Min(intReturn, intMAG);
+                return _intCachedFreeLevels = Math.Min(intReturn, MAGAttributeObject.TotalValue);
             }
         }
 
+        private decimal _decCachedPowerPoints = decimal.MinValue;
         /// <summary>
         /// Total number of Power Points the Power costs.
         /// </summary>
@@ -458,9 +582,12 @@ namespace Chummer
         {
             get
             {
-                if (_blnFree || Rating == 0 || !LevelsEnabled && FreeLevels > 0)
+                if (_decCachedPowerPoints != decimal.MinValue)
+                    return _decCachedPowerPoints;
+
+                if (Rating == 0 || !LevelsEnabled && FreeLevels > 0)
                 {
-                    return 0;
+                    return _decCachedPowerPoints = 0;
                 }
 
                 decimal decReturn;
@@ -475,20 +602,18 @@ namespace Chummer
                     decReturn -= FreePoints;
                 }
                 decReturn -= Discount;
-                return Math.Max(decReturn, 0.0m);
-            }            
+                return _decCachedPowerPoints = Math.Max(decReturn, 0.0m);
+            }
         }
 
         public string DisplayPoints
         {
             get
             {
-                if (!string.IsNullOrEmpty(_displayPoints))
-                    return _displayPoints;
-                else
-                    return PowerPoints.ToString("G29", GlobalOptions.CultureInfo);
+                if (string.IsNullOrEmpty(_strCachedPowerPoints))
+                    _strCachedPowerPoints = PowerPoints.ToString(GlobalOptions.CultureInfo);
+                return _strCachedPowerPoints;
             }
-            set => _displayPoints = value;
         }
 
         /// <summary>
@@ -502,7 +627,7 @@ namespace Chummer
 
         /// <summary>
         /// Free Power Points that apply to the Power. Calculated as Improvement Rating * 0.25.
-        /// Typically used for Qi Foci. 
+        /// Typically used for Qi Foci.
         /// </summary>
         public decimal FreePoints
         {
@@ -542,7 +667,18 @@ namespace Chummer
         /// <summary>
         /// Whether or not Levels enabled for the Power.
         /// </summary>
-        public bool LevelsEnabled { get; set; }
+        public bool LevelsEnabled
+        {
+            get => _blnLevelsEnabled;
+            set
+            {
+                if (_blnLevelsEnabled != value)
+                {
+                    _blnLevelsEnabled = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
 
         /// <summary>
         /// Maximum Level for the Power.
@@ -550,7 +686,14 @@ namespace Chummer
         public int MaxLevels
         {
             get => _intMaxLevel;
-            set => _intMaxLevel = value;
+            set
+            {
+                if (_intMaxLevel != value)
+                {
+                    _intMaxLevel = value;
+                    OnPropertyChanged();
+                }
+            }
         }
 
         /// <summary>
@@ -564,7 +707,7 @@ namespace Chummer
                 if (value != _blnDiscountedAdeptWay)
                 {
                     _blnDiscountedAdeptWay = value;
-                    OnPropertyChanged(nameof(DiscountedAdeptWay));
+                    OnPropertyChanged();
                 }
             }
         }
@@ -575,7 +718,14 @@ namespace Chummer
         public bool DiscountedGeas
         {
             get => _blnDiscountedGeas;
-            set => _blnDiscountedGeas = value;
+            set
+            {
+                if (value != _blnDiscountedGeas)
+                {
+                    _blnDiscountedGeas = value;
+                    OnPropertyChanged();
+                }
+            }
         }
 
         /// <summary>
@@ -608,7 +758,7 @@ namespace Chummer
         {
             string strReturn = string.Empty;
 
-            switch (_strAction)
+            switch (Action)
             {
                 case "Auto":
                     strReturn = LanguageManager.GetString("String_ActionAutomatic", strLanguage);
@@ -633,6 +783,19 @@ namespace Chummer
             return strReturn;
         }
 
+        public Color PreferredColor
+        {
+            get
+            {
+                if (!string.IsNullOrEmpty(Notes))
+                {
+                    return Color.SaddleBrown;
+                }
+
+                return SystemColors.WindowText;
+            }
+        }
+
         #endregion
 
         #region Complex Properties 
@@ -646,33 +809,23 @@ namespace Chummer
                 int intReturn = MaxLevels;
                 if (intReturn == 0)
                 {
-                    int intMAG = CharacterObject.MAG.TotalValue;
-                    if (CharacterObject.Options.MysAdeptSecondMAGAttribute && CharacterObject.IsMysticAdept)
-                        intMAG = CharacterObject.MAGAdept.TotalValue;
-                    intReturn = Math.Max(intReturn, intMAG);
+                    intReturn = Math.Max(intReturn, MAGAttributeObject.TotalValue);
                 }
-                if (Name == "Improved Ability (skill)")
+                if (BoostedSkill != null)
                 {
-                    Skill objBoostedSkill = CharacterObject.SkillsSection.GetActiveSkill(Extra);
-                    if (objBoostedSkill != null)
-                    {
-                        // +1 at the end so that division of 2 always rounds up, and integer division by 2 is significantly less expensive than decimal/double division
-                        intReturn = Math.Min(intReturn, (objBoostedSkill.Base + objBoostedSkill.Karma + 1) / 2);
-                    }
+                    // +1 at the end so that division of 2 always rounds up, and integer division by 2 is significantly less expensive than decimal/double division
+                    intReturn = Math.Min(intReturn, (BoostedSkill.LearnedRating + 1) / 2);
                 }
                 if (!CharacterObject.IgnoreRules)
                 {
-                    int intMAG = CharacterObject.MAG.TotalValue;
-                    if (CharacterObject.Options.MysAdeptSecondMAGAttribute && CharacterObject.IsMysticAdept)
-                        intMAG = CharacterObject.MAGAdept.TotalValue;
-                    intReturn = Math.Min(intReturn, intMAG);
+                    intReturn = Math.Min(intReturn, MAGAttributeObject.TotalValue);
                 }
                 return intReturn;
             }
         }
 
         /// <summary>
-        /// Whether the power can be discounted due to presence of an Adept Way. 
+        /// Whether the power can be discounted due to presence of an Adept Way.
         /// </summary>
         public bool AdeptWayDiscountEnabled
         {
@@ -683,7 +836,7 @@ namespace Chummer
                     return false;
                 }
                 bool blnReturn = false;
-                //If the Adept Way Requirements node is missing OR the Adept Way Requirements node doesn't have magicianswayforbids, check for the magician's way discount. 
+                //If the Adept Way Requirements node is missing OR the Adept Way Requirements node doesn't have magicianswayforbids, check for the magician's way discount.
                 if (_nodAdeptWayRequirements?["magicianswayforbids"] == null)
                 {
                     blnReturn = CharacterObject.Improvements.Any(x => x.ImproveType == Improvement.ImprovementType.MagiciansWayDiscount && x.Enabled);
@@ -703,32 +856,132 @@ namespace Chummer
                 DiscountedAdeptWay = false;
         }
 
+        private static readonly DependancyGraph<string> PowerDependencyGraph =
+            new DependancyGraph<string>(
+                new DependancyGraphNode<string>(nameof(DisplayPoints),
+                    new DependancyGraphNode<string>(nameof(PowerPoints),
+                        new DependancyGraphNode<string>(nameof(TotalRating),
+                            new DependancyGraphNode<string>(nameof(Rating)),
+                            new DependancyGraphNode<string>(nameof(FreeLevels),
+                                new DependancyGraphNode<string>(nameof(FreePoints)),
+                                new DependancyGraphNode<string>(nameof(ExtraPointCost)),
+                                new DependancyGraphNode<string>(nameof(PointsPerLevel))
+                            ),
+                            new DependancyGraphNode<string>(nameof(TotalMaximumLevels),
+                                new DependancyGraphNode<string>(nameof(LevelsEnabled)),
+                                new DependancyGraphNode<string>(nameof(MaxLevels))
+                            )
+                        ),
+                        new DependancyGraphNode<string>(nameof(Rating)),
+                        new DependancyGraphNode<string>(nameof(LevelsEnabled)),
+                        new DependancyGraphNode<string>(nameof(FreeLevels)),
+                        new DependancyGraphNode<string>(nameof(PointsPerLevel)),
+                        new DependancyGraphNode<string>(nameof(FreePoints)),
+                        new DependancyGraphNode<string>(nameof(ExtraPointCost)),
+                        new DependancyGraphNode<string>(nameof(Discount),
+                            new DependancyGraphNode<string>(nameof(DiscountedAdeptWay)),
+                            new DependancyGraphNode<string>(nameof(AdeptWayDiscount))
+                        )
+                    )
+                ),
+                new DependancyGraphNode<string>(nameof(ToolTip),
+                    new DependancyGraphNode<string>(nameof(Rating)),
+                    new DependancyGraphNode<string>(nameof(PointsPerLevel))
+                ),
+                new DependancyGraphNode<string>(nameof(DoesNotHaveFreeLevels),
+                    new DependancyGraphNode<string>(nameof(FreeLevels))
+                )
+            );
+
         public event PropertyChangedEventHandler PropertyChanged;
 
         [NotifyPropertyChangedInvocator]
-        public void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        public void OnPropertyChanged([CallerMemberName] string strPropertyName = null)
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-            // If the Bonus contains "Rating", remove the existing Improvements and create new ones.
-            if (propertyName == nameof(TotalRating) && Bonus?.InnerXml.Contains("Rating") == true)
+            OnMultiplePropertyChanged(strPropertyName);
+        }
+
+        public void OnMultiplePropertyChanged(params string[] lstPropertyNames)
+        {
+            ICollection<string> lstNamesOfChangedProperties = null;
+            foreach (string strPropertyName in lstPropertyNames)
             {
-                ImprovementManager.RemoveImprovements(CharacterObject, Improvement.ImprovementSource.Power, InternalId);
-                if (!Deleting)
+                if (lstNamesOfChangedProperties == null)
+                    lstNamesOfChangedProperties = PowerDependencyGraph.GetWithAllDependants(strPropertyName);
+                else
                 {
-                    ImprovementManager.ForcedValue = Extra;
-                    ImprovementManager.CreateImprovements(CharacterObject, Improvement.ImprovementSource.Power, InternalId, Bonus, false, TotalRating, DisplayNameShort(GlobalOptions.Language));
+                    foreach (string strLoopChangedProperty in PowerDependencyGraph.GetWithAllDependants(strPropertyName))
+                        lstNamesOfChangedProperties.Add(strLoopChangedProperty);
+                }
+            }
+
+            if ((lstNamesOfChangedProperties?.Count > 0) != true)
+                return;
+
+            if (lstNamesOfChangedProperties.Contains(nameof(DisplayPoints)))
+                _strCachedPowerPoints = string.Empty;
+            if (lstNamesOfChangedProperties.Contains(nameof(FreeLevels)))
+                _intCachedFreeLevels = int.MinValue;
+            if (lstNamesOfChangedProperties.Contains(nameof(PowerPoints)))
+                _decCachedPowerPoints = decimal.MinValue;
+
+            // If the Bonus contains "Rating", remove the existing Improvements and create new ones.
+            if (lstNamesOfChangedProperties.Contains(nameof(TotalRating)))
+            {
+                if (Bonus?.InnerXml.Contains("Rating") == true)
+                {
+                    ImprovementManager.RemoveImprovements(CharacterObject, Improvement.ImprovementSource.Power, InternalId);
+                    int intTotalRating = TotalRating;
+                    if (intTotalRating > 0)
+                    {
+                        ImprovementManager.ForcedValue = Extra;
+                        ImprovementManager.CreateImprovements(CharacterObject, Improvement.ImprovementSource.Power, InternalId, Bonus, false, intTotalRating, DisplayNameShort(GlobalOptions.Language));
+                    }
+                }
+            }
+
+            if (PropertyChanged != null)
+            {
+                foreach (string strPropertyToChange in lstNamesOfChangedProperties)
+                {
+                    PropertyChanged.Invoke(this, new PropertyChangedEventArgs(strPropertyToChange));
                 }
             }
         }
 
-        /// <summary>
-        /// Is the currently power being deleted? 
-        /// Ugly hack to prevent powers with Ratings recreating their improvments when they're being deleted. TODO: FIX THIS BETTER
-        /// </summary>
-        public bool Deleting { internal get; set; }
+        protected void OnLinkedAttributeChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(CharacterAttrib.TotalValue))
+                OnPropertyChanged(nameof(TotalMaximumLevels));
+        }
 
-        public string Category { get; set; }
+        protected void OnBoostedSkillChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(Skill.LearnedRating))
+            {
+                if (BoostedSkill.LearnedRating != _cachedLearnedRating && _cachedLearnedRating != TotalMaximumLevels)
+                {
+                    _cachedLearnedRating = ((Skill)sender).LearnedRating;
+                    OnPropertyChanged(nameof(TotalMaximumLevels));
+                }
+            }
+        }
 
+        private void OnCharacterChanged(object sender, PropertyChangedEventArgs propertyChangedEventArgs)
+        {
+            if (propertyChangedEventArgs.PropertyName == nameof(Character.IsMysticAdept))
+            {
+                if (CharacterObject.Options.MysAdeptSecondMAGAttribute && CharacterObject.IsMysticAdept)
+                {
+                    MAGAttributeObject = CharacterObject.MAGAdept;
+                }
+                else
+                {
+                    MAGAttributeObject = CharacterObject.MAG;
+                }
+            }
+        }
+        
         private XmlNode _objCachedMyXmlNode;
         private string _strCachedXmlNodeLanguage = string.Empty;
 
@@ -750,33 +1003,19 @@ namespace Chummer
         /// <summary>
         /// ToolTip that shows how the Power is calculating its Modified Rating.
         /// </summary>
-        public string ToolTip()
+        public string ToolTip
         {
-            StringBuilder strbldModifier = new StringBuilder("Rating (");
-            strbldModifier.Append(Rating);
-            strbldModifier.Append(" × ");
-            strbldModifier.Append(PointsPerLevel);
-            strbldModifier.Append(')');
-            foreach (Improvement objImprovement in CharacterObject.Improvements.Where(objImprovement => objImprovement.ImproveType == Improvement.ImprovementType.AdeptPower && objImprovement.ImprovedName == Name && objImprovement.UniqueName == Extra && objImprovement.Enabled))
+            get
             {
-                strbldModifier.Append(" + ");
-                strbldModifier.Append(CharacterObject.GetObjectName(objImprovement, GlobalOptions.Language));
-                strbldModifier.Append(" (");
-                strbldModifier.Append(objImprovement.Rating.ToString());
-                strbldModifier.Append(')');
+                string strSpaceCharacter = LanguageManager.GetString("String_Space", GlobalOptions.Language);
+                StringBuilder strbldModifier = new StringBuilder("Rating" + strSpaceCharacter + '(' + Rating.ToString(GlobalOptions.CultureInfo) + strSpaceCharacter + '×' + strSpaceCharacter + PointsPerLevel.ToString(GlobalOptions.CultureInfo) + ')');
+                foreach (Improvement objImprovement in CharacterObject.Improvements.Where(objImprovement => objImprovement.ImproveType == Improvement.ImprovementType.AdeptPower && objImprovement.ImprovedName == Name && objImprovement.UniqueName == Extra && objImprovement.Enabled))
+                {
+                    strbldModifier.Append(strSpaceCharacter + '+' + strSpaceCharacter + CharacterObject.GetObjectName(objImprovement, GlobalOptions.Language) + strSpaceCharacter + '(' + objImprovement.Rating.ToString(GlobalOptions.CultureInfo) + ')');
+                }
+
+                return strbldModifier.ToString();
             }
-
-            return strbldModifier.ToString();
-        }
-
-        /// <summary>
-        /// Forces a particular event. Currently used for forcing Qi Foci to update Single-Level powers. //TODO: Better way to implement this?
-        /// </summary>
-        /// <param name="property"></param>
-        public void ForceEvent(string property)
-        {
-            var v = new PropertyChangedEventArgs(property);
-            PropertyChanged?.Invoke(this, v);
         }
         #endregion
     }

@@ -20,6 +20,7 @@
 using Chummer.Backend.Equipment;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
 using System.Linq;
@@ -70,7 +71,8 @@ namespace Chummer
     /// <summary>
     /// A Quality.
     /// </summary>
-    public class Quality : IHasInternalId, IHasName, IHasXmlNode
+    [DebuggerDisplay("{DisplayName(GlobalOptions.DefaultLanguage)}")]
+    public class Quality : IHasInternalId, IHasName, IHasXmlNode, IHasNotes
     {
         private Guid _guiID;
         private string _strName = string.Empty;
@@ -97,11 +99,7 @@ namespace Chummer
         private Guid _guiQualityId;
         private string _strStage;
 
-        public string Stage
-        {
-            get => _strStage;
-            private set => _strStage = value;
-        }
+        public string Stage => _strStage;
 
         #region Helper Methods
         /// <summary>
@@ -260,7 +258,7 @@ namespace Chummer
             if (_nodBonus?.ChildNodes.Count > 0)
             {
                 ImprovementManager.ForcedValue = strForceValue;
-                if (!ImprovementManager.CreateImprovements(_objCharacter, Improvement.ImprovementSource.Quality, _guiID.ToString("D"), objXmlQuality["bonus"], false, 1, DisplayNameShort(GlobalOptions.Language)))
+                if (!ImprovementManager.CreateImprovements(_objCharacter, Improvement.ImprovementSource.Quality, InternalId, _nodBonus, false, 1, DisplayNameShort(GlobalOptions.Language)))
                 {
                     _guiID = Guid.Empty;
                     return;
@@ -275,29 +273,29 @@ namespace Chummer
                 _strExtra = strForceValue;
             }
             _nodFirstLevelBonus = objXmlQuality["firstlevelbonus"];
-            if (Levels == 0 && _nodFirstLevelBonus?.ChildNodes.Count > 0)
+            if (_nodFirstLevelBonus?.ChildNodes.Count > 0 && Levels == 0)
             {
-                ImprovementManager.ForcedValue = strForceValue;
-                if (!ImprovementManager.CreateImprovements(_objCharacter, Improvement.ImprovementSource.Quality, _guiID.ToString("D"), objXmlQuality["firstlevelbonus"], false, 1, DisplayNameShort(GlobalOptions.Language)))
+                ImprovementManager.ForcedValue = string.IsNullOrEmpty(strForceValue) ? Extra : strForceValue;
+                if (!ImprovementManager.CreateImprovements(_objCharacter, Improvement.ImprovementSource.Quality, InternalId, _nodFirstLevelBonus, false, 1, DisplayNameShort(GlobalOptions.Language)))
                 {
                     _guiID = Guid.Empty;
                     return;
                 }
             }
 
-            if (string.IsNullOrEmpty(_strNotes))
+            if (string.IsNullOrEmpty(Notes))
             {
-                string strEnglishNameOnPage = _strName;
+                string strEnglishNameOnPage = Name;
                 string strNameOnPage = string.Empty;
                 // make sure we have something and not just an empty tag
                 if (objXmlQuality.TryGetStringFieldQuickly("nameonpage", ref strNameOnPage) && !string.IsNullOrEmpty(strNameOnPage))
                     strEnglishNameOnPage = strNameOnPage;
 
-                _strNotes = CommonFunctions.GetTextFromPDF($"{_strSource} {_strPage}", strEnglishNameOnPage);
+                string strQualityNotes = CommonFunctions.GetTextFromPDF($"{Source} {Page}", strEnglishNameOnPage);
 
-                if (string.IsNullOrEmpty(_strNotes))
+                if (string.IsNullOrEmpty(strQualityNotes) && GlobalOptions.Language != GlobalOptions.DefaultLanguage)
                 {
-                    string strTranslatedNameOnPage = DisplayName(GlobalOptions.Language);
+                    string strTranslatedNameOnPage = DisplayName(GlobalOptions.CultureInfo, GlobalOptions.Language);
 
                     // don't check again it is not translated
                     if (strTranslatedNameOnPage != _strName)
@@ -307,9 +305,11 @@ namespace Chummer
                             && !string.IsNullOrEmpty(strNameOnPage) && strNameOnPage != strEnglishNameOnPage)
                             strTranslatedNameOnPage = strNameOnPage;
 
-                        _strNotes = CommonFunctions.GetTextFromPDF($"{Source} {Page(GlobalOptions.Language)}", strTranslatedNameOnPage);
+                        Notes = CommonFunctions.GetTextFromPDF($"{Source} {DisplayPage(GlobalOptions.Language)}", strTranslatedNameOnPage);
                     }
                 }
+                else
+                    Notes = strQualityNotes;
             }
         }
 
@@ -421,14 +421,15 @@ namespace Chummer
         /// <param name="strLanguageToPrint">Language in which to print</param>
         public void Print(XmlTextWriter objWriter, int intRating, CultureInfo objCulture, string strLanguageToPrint)
         {
-            if (_blnPrint)
+            if (AllowPrint)
             {
+                string strSpaceCharacter = LanguageManager.GetString("String_Space", strLanguageToPrint);
                 string strRatingString = string.Empty;
                 if (intRating > 1)
-                    strRatingString = ' ' + intRating.ToString(objCulture);
+                    strRatingString = strSpaceCharacter + intRating.ToString(objCulture);
                 string strSourceName = string.Empty;
                 if (!string.IsNullOrWhiteSpace(SourceName))
-                    strSourceName = " (" + GetSourceName(strLanguageToPrint) + ')';
+                    strSourceName = strSpaceCharacter + '(' + GetSourceName(strLanguageToPrint) + ')';
                 objWriter.WriteStartElement("quality");
                 objWriter.WriteElementString("name", DisplayNameShort(strLanguageToPrint));
                 objWriter.WriteElementString("name_english", Name + strRatingString);
@@ -443,7 +444,7 @@ namespace Chummer
                 objWriter.WriteElementString("qualitytype_english", Type.ToString());
                 objWriter.WriteElementString("qualitysource", OriginSource.ToString());
                 objWriter.WriteElementString("source", CommonFunctions.LanguageBookShort(Source, strLanguageToPrint));
-                objWriter.WriteElementString("page", Page(strLanguageToPrint));
+                objWriter.WriteElementString("page", DisplayPage(strLanguageToPrint));
                 if (_objCharacter.Options.PrintNotes)
                     objWriter.WriteElementString("notes", Notes);
                 objWriter.WriteEndElement();
@@ -510,12 +511,21 @@ namespace Chummer
         /// <summary>
         /// Page Number.
         /// </summary>
-        public string Page(string strLanguage)
+        public string Page
+        {
+            get => _strPage;
+            set => _strPage = value;
+        }
+
+        /// <summary>
+        /// Page Number.
+        /// </summary>
+        public string DisplayPage(string strLanguage)
         {
             if (strLanguage == GlobalOptions.DefaultLanguage)
-                return _strPage;
+                return Page;
 
-            return GetNode(strLanguage)?["altpage"]?.InnerText ?? _strPage;
+            return GetNode(strLanguage)?["altpage"]?.InnerText ?? Page;
         }
 
         /// <summary>
@@ -613,19 +623,20 @@ namespace Chummer
         /// The name of the object as it should be displayed in lists. Name (Extra).
         /// If there is more than one instance of the same quality, it's: Name (Extra) Number
         /// </summary>
-        public string DisplayName(string strLanguage)
+        public string DisplayName(CultureInfo objCulture, string strLanguage)
         {
             string strReturn = DisplayNameShort(strLanguage);
+            string strSpaceCharacter = LanguageManager.GetString("String_Space", strLanguage);
 
-            if (!string.IsNullOrEmpty(_strExtra))
+            if (!string.IsNullOrEmpty(Extra))
             {
                 // Attempt to retrieve the CharacterAttribute name.
-                strReturn += " (" + LanguageManager.TranslateExtra(_strExtra, strLanguage) + ')';
+                strReturn += strSpaceCharacter + '(' + LanguageManager.TranslateExtra(Extra, strLanguage) + ')';
             }
 
             int intLevels = Levels;
             if (intLevels > 1)
-                strReturn += ' ' + intLevels.ToString(GlobalOptions.CultureInfo);
+                strReturn += strSpaceCharacter + intLevels.ToString(objCulture);
 
             return strReturn;
         }
@@ -750,40 +761,51 @@ namespace Chummer
         }
         #endregion
 
-        #region Methods
+        #region UI Methods
         public TreeNode CreateTreeNode(ContextMenuStrip cmsQuality)
         {
             if ((OriginSource == QualitySource.BuiltIn ||
                  OriginSource == QualitySource.Improvement ||
                  OriginSource == QualitySource.LifeModule ||
-                 OriginSource == QualitySource.Metatype) && !string.IsNullOrEmpty(Source) && !_objCharacter.Options.BookEnabled(Source))
+                 OriginSource == QualitySource.Metatype ||
+                 OriginSource == QualitySource.MetatypeRemovable) && !string.IsNullOrEmpty(Source) && !_objCharacter.Options.BookEnabled(Source))
                 return null;
 
             TreeNode objNode = new TreeNode
             {
                 Name = InternalId,
-                Text = DisplayName(GlobalOptions.Language),
+                Text = DisplayName(GlobalOptions.CultureInfo, GlobalOptions.Language),
                 Tag = this,
-                ContextMenuStrip = cmsQuality
+                ContextMenuStrip = cmsQuality,
+                ForeColor = PreferredColor,
+                ToolTipText = Notes.WordWrap(100)
             };
-            if (!Implemented)
-            {
-                objNode.ForeColor = Color.Red;
-            }
-            else if (!string.IsNullOrEmpty(Notes))
-            {
-                objNode.ForeColor = Color.SaddleBrown;
-            }
-            else if (OriginSource == QualitySource.BuiltIn ||
-                OriginSource == QualitySource.Improvement ||
-                OriginSource == QualitySource.LifeModule ||
-                OriginSource == QualitySource.Metatype)
-            {
-                objNode.ForeColor = SystemColors.GrayText;
-            }
-            objNode.ToolTipText = Notes.WordWrap(100);
 
             return objNode;
+        }
+
+        public Color PreferredColor
+        {
+            get
+            {
+                if (!Implemented)
+                {
+                    return Color.Red;
+                }
+                if (!string.IsNullOrEmpty(Notes))
+                {
+                    return Color.SaddleBrown;
+                }
+                if (OriginSource == QualitySource.BuiltIn ||
+                    OriginSource == QualitySource.Improvement ||
+                    OriginSource == QualitySource.LifeModule ||
+                    OriginSource == QualitySource.Metatype)
+                {
+                    return SystemColors.GrayText;
+                }
+
+                return SystemColors.WindowText;
+            }
         }
         #endregion
 

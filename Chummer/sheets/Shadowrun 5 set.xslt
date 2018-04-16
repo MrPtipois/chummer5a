@@ -254,21 +254,9 @@
               <div class="block" id="AttributesBlock">
             <table class="tablestyle" style="max-width: 100%;">
               <tr>
-                <th width="25%">
-                  <xsl:value-of select="$lang.Physical"/>
-                  <xsl:text> </xsl:text>
-                  <xsl:value-of select="$lang.Attributes"/>
-                </th>
-                <th width="25%">
-                  <xsl:value-of select="$lang.Mental"/>
-                  <xsl:text> </xsl:text>
-                  <xsl:value-of select="$lang.Attributes"/>
-                </th>
-                <th width="25%">
-                  <xsl:value-of select="$lang.Special"/>
-                  <xsl:text> </xsl:text>
-                  <xsl:value-of select="$lang.Attributes"/>
-                </th>
+                <th width="25%"><xsl:value-of select="$lang.PhysicalAttributes"/></th>
+                <th width="25%"><xsl:value-of select="$lang.MentalAttributes"/></th>
+                <th width="25%"><xsl:value-of select="$lang.SpecialAttributes"/></th>
                 <th width="25%">
                   <xsl:value-of select="$lang.Initiative"/>
                 </th>
@@ -670,7 +658,7 @@
                   </div>
                   <xsl:call-template name="RowSummary">
                     <xsl:with-param name="text" select="$lang.ConditionMonitor"/>
-                    <xsl:with-param name="buttons" select="'CMBlock'"/>
+                    <xsl:with-param name="blockname" select="'CMBlock'"/>
                   </xsl:call-template>
                 </td>
               </tr>
@@ -1264,7 +1252,7 @@
             <tr>
               <td><xsl:value-of select="stream"/></td>
               <td style="text-align:center;">
-			    <xsl:value-of select="drain"/>
+			    <xsl:value-of select="drainattributes"/> (<xsl:value-of select="drain"/>)
 			  </td>
               <td/>
               <td style="text-align:center;">
@@ -2035,7 +2023,7 @@
         </xsl:if>
       </td>
       <td style="vertical-align:top; text-align:center;">
-        <xsl:value-of select="tradition/drain" />
+        <xsl:value-of select="tradition/drainattributes" /> (<xsl:value-of select="tradition/drain" />)
       </td>
       <td style="vertical-align:top; text-align:center;">
         <xsl:value-of select="tradition/spiritcombat" />

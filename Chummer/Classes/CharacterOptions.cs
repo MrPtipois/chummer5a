@@ -18,6 +18,7 @@
  */
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Text;
 using System.Windows.Forms;
@@ -25,7 +26,7 @@ using System.Xml;
 
 namespace Chummer
 {
-    public class CharacterOptions
+    public class CharacterOptions : INotifyPropertyChanged
     {
         private readonly Character _character;
         private string _strFileName = "default.xml";
@@ -33,6 +34,7 @@ namespace Chummer
         private string _strImageFolder = string.Empty;
 
         // Settings.
+        // ReSharper disable once InconsistentNaming
         private bool _blnAllow2ndMaxAttribute;
         private bool _blnAllowBiowareSuites;
         private bool _blnAllowCyberwareESSDiscounts;
@@ -65,7 +67,7 @@ namespace Chummer
         private bool _blnDroneArmorMultiplierEnabled;
         private bool _blnFreeKnowledgeMultiplierEnabled;
         private bool _blnFreeSpiritPowerPointsMAG;
-        private bool _blnIgnoreArmorEncumbrance = true;
+        private bool _blnNoArmorEncumbrance;
         private bool _blnIgnoreArt;
         private bool _blnUnarmedImprovementsApplyToWeapons;
         private bool _blnLicenseRestrictedItems;
@@ -89,7 +91,7 @@ namespace Chummer
         private bool _blnUseTotalValueForFreeKnowledge;
         private bool _blnDoNotRoundEssenceInternally;
         private bool _blnEnemyKarmaQualityLimit = true;
-        private int _intEssenceDecimals = 2;
+        private string _strEssenceFormat = "#,0.00";
         private int _intForbiddenCostMultiplier = 1;
         private readonly int _intFreeContactsFlatNumber = 0;
         private int _intFreeContactsMultiplier = 3;
@@ -110,7 +112,7 @@ namespace Chummer
         private bool _blnSearchInCategoryOnly = true;
         private string _strNuyenFormat = "#,0.##";
         private bool _blnCompensateSkillGroupKarmaDifference;
-        
+
         private string _strBookXPath = string.Empty;
         private string _strExcludeLimbSlot = string.Empty;
         
@@ -144,6 +146,7 @@ namespace Chummer
         private int _intKarmaSpirit = 1;
         private int _intKarmaNewAIProgram = 5;
         private int _intKarmaNewAIAdvancedProgram = 8;
+        private int _intKarmaMysticAdeptPowerPoint = 5;
 
         // Karma Foci variables.
         // Enchanting
@@ -180,6 +183,8 @@ namespace Chummer
 
         // Sourcebook list.
         private readonly HashSet<string> _lstBooks = new HashSet<string>();
+
+        public event PropertyChangedEventHandler PropertyChanged;
 
         #region Initialization, Save, and Load Methods
         public CharacterOptions(Character character)
@@ -294,8 +299,8 @@ namespace Chummer
             objWriter.WriteElementString("usetotalvalueforcontacts", _blnUseTotalValueForFreeContacts.ToString());
             // <nosinglearmorencumbrance />
             objWriter.WriteElementString("nosinglearmorencumbrance", _blnNoSingleArmorEncumbrance.ToString());
-            // <ignorearmorencumbrance />
-            objWriter.WriteElementString("ignorearmorencumbrance", _blnIgnoreArmorEncumbrance.ToString());
+            // <NoArmorEncumbrance />
+            objWriter.WriteElementString("noarmorencumbrance", _blnNoArmorEncumbrance.ToString());
             // <esslossreducesmaximumonly />
             objWriter.WriteElementString("esslossreducesmaximumonly", _blnESSLossReducesMaximumOnly.ToString());
             // <allowskillregrouping />
@@ -345,7 +350,7 @@ namespace Chummer
             // <nuyenformat />
             objWriter.WriteElementString("nuyenformat", _strNuyenFormat);
             // <essencedecimals />
-            objWriter.WriteElementString("essencedecimals", _intEssenceDecimals.ToString());
+            objWriter.WriteElementString("essenceformat", _strEssenceFormat);
             // <enforcecapacity />
             objWriter.WriteElementString("enforcecapacity", _blnEnforceCapacity.ToString());
             // <restrictrecoil />
@@ -489,6 +494,8 @@ namespace Chummer
             objWriter.WriteElementString("karmasustainingfocus", _intKarmaSustainingFocus.ToString());
             // <karmaweaponfocus />
             objWriter.WriteElementString("karmaweaponfocus", _intKarmaWeaponFocus.ToString());
+            // <karmaweaponfocus />
+            objWriter.WriteElementString("karmamysadpp", _intKarmaMysticAdeptPowerPoint.ToString());
             // </karmacost>
             objWriter.WriteEndElement();
 
@@ -586,7 +593,7 @@ namespace Chummer
                     }
                 }
             }
-            
+
             XmlNode objXmlNode = objXmlDocument.SelectSingleNode("//settings");
             // Setting name.
             _strName = objXmlDocument.SelectSingleNode("/settings/name")?.InnerText;
@@ -648,7 +655,7 @@ namespace Chummer
             // No Single Armor Encumbrance
             objXmlNode.TryGetBoolFieldQuickly("nosinglearmorencumbrance", ref _blnNoSingleArmorEncumbrance);
             // Ignore Armor Encumbrance
-            objXmlNode.TryGetBoolFieldQuickly("ignorearmorencumbrance", ref _blnIgnoreArmorEncumbrance);
+            objXmlNode.TryGetBoolFieldQuickly("noarmorencumbrance", ref _blnNoArmorEncumbrance);
             // Essence Loss Reduces Maximum Only.
             objXmlNode.TryGetBoolFieldQuickly("esslossreducesmaximumonly", ref _blnESSLossReducesMaximumOnly);
             // Allow Skill Regrouping.
@@ -703,8 +710,14 @@ namespace Chummer
             objXmlNode.TryGetBoolFieldQuickly("enemykarmaqualitylimit", ref _blnEnemyKarmaQualityLimit);
             // Format in which nuyen values are displayed
             objXmlNode.TryGetStringFieldQuickly("nuyenformat", ref _strNuyenFormat);
-            // Number of decimal places to round to when calculating Essence.
-            objXmlNode.TryGetInt32FieldQuickly("essencedecimals", ref _intEssenceDecimals);
+            // Format in which essence values should be displayed (and to which they should be rounded)
+            if (!objXmlNode.TryGetStringFieldQuickly("essenceformat", ref _strEssenceFormat))
+            {
+                int intTemp = 2;
+                // Number of decimal places to round to when calculating Essence.
+                objXmlNode.TryGetInt32FieldQuickly("essencedecimals", ref intTemp);
+                EssenceDecimals = intTemp;
+            }
             // Whether or not Capacity limits should be enforced.
             objXmlNode.TryGetBoolFieldQuickly("enforcecapacity", ref _blnEnforceCapacity);
             // Whether or not Recoil modifiers are restricted (AR 148).
@@ -783,6 +796,7 @@ namespace Chummer
                 objXmlNode.TryGetInt32FieldQuickly("karmaleavegroup", ref _intKarmaLeaveGroup);
                 objXmlNode.TryGetInt32FieldQuickly("karmacomplexformskillsoft", ref _intKarmaComplexFormSkillfot);
                 objXmlNode.TryGetInt32FieldQuickly("karmaenhancement", ref _intKarmaEnhancement);
+                objXmlNode.TryGetInt32FieldQuickly("karmamysadpp", ref _intKarmaMysticAdeptPowerPoint);
 
                 // Attempt to load the Karma costs for Foci.
                 objXmlNode.TryGetInt32FieldQuickly("karmaalchemicalfocus", ref _intKarmaAlchemicalFocus);
@@ -1081,7 +1095,14 @@ namespace Chummer
         public bool AllowInitiationInCreateMode
         {
             get => _blnAllowInitiationInCreateMode;
-            set => _blnAllowInitiationInCreateMode = value;
+            set
+            {
+                if (_blnAllowInitiationInCreateMode != value)
+                {
+                    _blnAllowInitiationInCreateMode = value;
+                    _character?.OnPropertyChanged(nameof(Character.AddInitiationsAllowed));
+                }
+            }
         }
 
         /// <summary>
@@ -1135,7 +1156,14 @@ namespace Chummer
         public bool MysAdeptAllowPPCareer
         {
             get => _blnMysAdeptAllowPPCareer;
-            set => _blnMysAdeptAllowPPCareer = value;
+            set
+            {
+                if (_blnMysAdeptAllowPPCareer != value)
+                {
+                    _blnMysAdeptAllowPPCareer = value;
+                    _character?.OnPropertyChanged(nameof(Character.MysAdeptAllowPPCareer));
+                }
+            }
         }
 
         /// <summary>
@@ -1144,12 +1172,20 @@ namespace Chummer
         public bool MysAdeptSecondMAGAttribute
         {
             get => _blnMysAdeptSecondMAGAttribute;
-            set => _blnMysAdeptSecondMAGAttribute = value;
+            set
+            {
+                if (_blnMysAdeptSecondMAGAttribute != value)
+                {
+                    _blnMysAdeptSecondMAGAttribute = value;
+                    _character?.OnPropertyChanged(nameof(Character.UseMysticAdeptPPs));
+                }
+            }
         }
 
         /// <summary>
         /// Whether or not to allow a 2nd max attribute with Exceptional Attribute
         /// </summary>
+        // ReSharper disable once InconsistentNaming
         public bool Allow2ndMaxAttribute
         {
             get => _blnAllow2ndMaxAttribute;
@@ -1168,8 +1204,8 @@ namespace Chummer
             }
             set
             {
-                //As this is a hack, not quite sure how this is glued together. 
-                //If i understand it right (COMUNICATING TROUGHT FUCKING FILES?) this should never happen. 
+                //As this is a hack, not quite sure how this is glued together.
+                //If i understand it right (COMUNICATING TROUGHT FUCKING FILES?) this should never happen.
                 //Keyword should
                 if (_character == null)
                 {
@@ -1239,10 +1275,10 @@ namespace Chummer
         /// <summary>
         /// House Rule: Ignore Armor Encumbrance entirely.
         /// </summary>
-        public bool IgnoreArmorEncumbrance
+        public bool NoArmorEncumbrance
         {
-            get => _blnIgnoreArmorEncumbrance;
-            set => _blnIgnoreArmorEncumbrance = value;
+            get => _blnNoArmorEncumbrance;
+            set => _blnNoArmorEncumbrance = value;
         }
 
         /// <summary>
@@ -1360,7 +1396,14 @@ namespace Chummer
         public bool ArmorDegradation
         {
             get => _blnArmorDegradation;
-            set => _blnArmorDegradation = value;
+            set
+            {
+                if (_blnArmorDegradation != value)
+                {
+                    _blnArmorDegradation = value;
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ArmorDegradation)));
+                }
+            }
         }
         
         /// <summary>
@@ -1369,7 +1412,14 @@ namespace Chummer
         public bool SpecialKarmaCostBasedOnShownValue
         {
             get => _blnSpecialKarmaCostBasedOnShownValue;
-            set => _blnSpecialKarmaCostBasedOnShownValue = value;
+            set
+            {
+                if (_blnSpecialKarmaCostBasedOnShownValue != value)
+                {
+                    _blnSpecialKarmaCostBasedOnShownValue = value;
+                    _character?.RefreshEssenceLossImprovements();
+                }
+            }
         }
 
         /// <summary>
@@ -1444,22 +1494,148 @@ namespace Chummer
             set => _intForbiddenCostMultiplier = value;
         }
 
+        private int _intCachedNuyenDecimals = -1;
+        /// <summary>
+        /// Number of decimal places to round to when diplaying nuyen values.
+        /// </summary>
+        public int NuyenDecimals
+        {
+            get
+            {
+                if (_intCachedNuyenDecimals >= 0)
+                    return _intCachedNuyenDecimals;
+                string strNuyenFormat = NuyenFormat;
+                int intDecimalPlaces = strNuyenFormat.IndexOf('.');
+                if (intDecimalPlaces == -1)
+                    intDecimalPlaces = 0;
+                else
+                    intDecimalPlaces = strNuyenFormat.Length - intDecimalPlaces - 1;
+
+                return _intCachedNuyenDecimals = intDecimalPlaces;
+            }
+            set
+            {
+                int intCurrentNuyenDecimals = NuyenDecimals;
+                int intNewNuyenDecimals = Math.Max(value, 0);
+                if (intNewNuyenDecimals < intCurrentNuyenDecimals)
+                {
+                    if (intNewNuyenDecimals > 0)
+                        NuyenFormat = NuyenFormat.Substring(0, NuyenFormat.Length - (intNewNuyenDecimals - intCurrentNuyenDecimals));
+                    else
+                    {
+                        int intDecimalPlaces = NuyenFormat.IndexOf('.');
+                        if (intDecimalPlaces != -1)
+                            NuyenFormat = NuyenFormat.Substring(0, intDecimalPlaces);
+                    }
+                }
+                else if (intNewNuyenDecimals > intCurrentNuyenDecimals)
+                {
+                    StringBuilder objNuyenFormat = string.IsNullOrEmpty(NuyenFormat) ? new StringBuilder("#,0") : new StringBuilder(NuyenFormat);
+                    if (intCurrentNuyenDecimals == 0)
+                    {
+                        objNuyenFormat.Append(".");
+                        for (int i = 0; i < intNewNuyenDecimals; ++i)
+                        {
+                            objNuyenFormat.Append("0");
+                        }
+                    }
+                    else
+                    {
+                        string strDecimalTypeToAdd = string.IsNullOrEmpty(NuyenFormat) ? "0" : NuyenFormat[NuyenFormat.Length - 1].ToString();
+                        intNewNuyenDecimals -= intCurrentNuyenDecimals;
+                        for (int i = 0; i < intNewNuyenDecimals; ++i)
+                        {
+                            objNuyenFormat.Append(strDecimalTypeToAdd);
+                        }
+                    }
+                    NuyenFormat = objNuyenFormat.ToString();
+                }
+            }
+        }
+
         /// <summary>
         /// Format in which nuyen values should be displayed (does not include nuyen symbol).
         /// </summary>
         public string NuyenFormat
         {
             get => _strNuyenFormat;
-            set => _strNuyenFormat = value;
+            set
+            {
+                if (_strNuyenFormat != value)
+                {
+                    _strNuyenFormat = value;
+                    _intCachedNuyenDecimals = -1;
+                    _character?.OnMultiplePropertyChanged(nameof(Character.DisplayNuyen), nameof(Character.DisplayCareerNuyen));
+                }
+            }
         }
 
+        private int _intCachedEssenceDecimals = -1;
         /// <summary>
         /// Number of decimal places to round to when calculating Essence.
         /// </summary>
         public int EssenceDecimals
         {
-            get => _intEssenceDecimals;
-            set => _intEssenceDecimals = value;
+            get
+            {
+                if (_intCachedEssenceDecimals >= 0)
+                    return _intCachedEssenceDecimals;
+                string strEssenceFormat = EssenceFormat;
+                int intDecimalPlaces = strEssenceFormat.IndexOf('.');
+                if (intDecimalPlaces == -1)
+                    intDecimalPlaces = 0;
+                else
+                    intDecimalPlaces = strEssenceFormat.Length - intDecimalPlaces - 1;
+
+                return _intCachedEssenceDecimals = intDecimalPlaces;
+            }
+            set
+            {
+                int intCurrentEssenceDecimals = EssenceDecimals;
+                int intNewEssenceDecimals = Math.Max(value, 0);
+                if (intNewEssenceDecimals < intCurrentEssenceDecimals)
+                {
+                    if (intNewEssenceDecimals > 0)
+                        EssenceFormat = EssenceFormat.Substring(0, EssenceFormat.Length - (intNewEssenceDecimals - intCurrentEssenceDecimals));
+                    else
+                    {
+                        int intDecimalPlaces = EssenceFormat.IndexOf('.');
+                        if (intDecimalPlaces != -1)
+                            EssenceFormat = EssenceFormat.Substring(0, intDecimalPlaces);
+                    }
+                }
+                else if (intNewEssenceDecimals > intCurrentEssenceDecimals)
+                {
+                    StringBuilder objEssenceFormat = string.IsNullOrEmpty(EssenceFormat) ? new StringBuilder("#,0") : new StringBuilder(EssenceFormat);
+                    if (intCurrentEssenceDecimals == 0)
+                    {
+                        objEssenceFormat.Append(".");
+                    }
+                    intNewEssenceDecimals -= intCurrentEssenceDecimals;
+                    for (int i = 0; i < intNewEssenceDecimals; ++i)
+                    {
+                        objEssenceFormat.Append("0");
+                    }
+                    EssenceFormat = objEssenceFormat.ToString();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Display format for Essence.
+        /// </summary>
+        public string EssenceFormat
+        {
+            get => _strEssenceFormat;
+            set
+            {
+                if (_strEssenceFormat != value)
+                {
+                    _strEssenceFormat = value;
+                    _intCachedEssenceDecimals = -1;
+                    _character?.OnMultiplePropertyChanged(nameof(Character.PrototypeTranshumanEssenceUsed), nameof(Character.Essence));
+                }
+            }
         }
 
         /// <summary>
@@ -1468,7 +1644,14 @@ namespace Chummer
         public bool DontRoundEssenceInternally
         {
             get => _blnDoNotRoundEssenceInternally;
-            set => _blnDoNotRoundEssenceInternally = value;
+            set
+            {
+                if (_blnDoNotRoundEssenceInternally != value)
+                {
+                    _blnDoNotRoundEssenceInternally = value;
+                    _character?.OnMultiplePropertyChanged(nameof(Character.PrototypeTranshumanEssenceUsed), nameof(Character.Essence));
+                }
+            }
         }
 
         /// <summary>
@@ -1504,7 +1687,14 @@ namespace Chummer
         public bool UnrestrictedNuyen
         {
             get => _blnUnrestrictedNuyen;
-            set => _blnUnrestrictedNuyen = value;
+            set
+            {
+                if (_blnUnrestrictedNuyen != value)
+                {
+                    _blnUnrestrictedNuyen = value;
+                    _character?.OnPropertyChanged(nameof(Character.TotalNuyenMaximumBP));
+                }
+            }
         }
 
         /// <summary>
@@ -2048,6 +2238,23 @@ namespace Chummer
             get => _intKarmaWeaponFocus;
             set => _intKarmaWeaponFocus = value;
         }
+
+        /// <summary>
+        /// How much Karma a single Power Point costs for a Mystic Adept.
+        /// </summary>
+        public int KarmaMysticAdeptPowerPoint
+        {
+            get => _intKarmaMysticAdeptPowerPoint;
+            set
+            {
+                if (_intKarmaMysticAdeptPowerPoint != value)
+                {
+                    _intKarmaMysticAdeptPowerPoint = value;
+                    _character?.OnPropertyChanged(nameof(Character.CanAffordCareerPP));
+                }
+            }
+        }
+
         #endregion
 
         #region Default Build
@@ -2102,7 +2309,14 @@ namespace Chummer
         public bool UseTotalValueForFreeContacts
         {
             get => _blnUseTotalValueForFreeContacts;
-            set => _blnUseTotalValueForFreeContacts = value;
+            set
+            {
+                if (_blnUseTotalValueForFreeContacts != value)
+                {
+                    _blnUseTotalValueForFreeContacts = value;
+                    _character?.OnPropertyChanged(nameof(Character.ContactPoints));
+                }
+            }
         }
 
         /// <summary>
@@ -2115,7 +2329,7 @@ namespace Chummer
         }
 
         /// <summary>
-        /// Whether Martial Arts grant a free specialisation in a skill. 
+        /// Whether Martial Arts grant a free specialisation in a skill.
         /// </summary>
         public bool FreeMartialArtSpecialization
         {
@@ -2124,7 +2338,7 @@ namespace Chummer
         }
 
         /// <summary>
-        /// Whether Spells from Magic Priority can also be spent on power points. 
+        /// Whether Spells from Magic Priority can also be spent on power points.
         /// </summary>
         public bool PrioritySpellsAsAdeptPowers
         {
@@ -2151,7 +2365,7 @@ namespace Chummer
         }
 
         /// <summary>
-        /// Whether items that exceed the Availability Limit should be shown in Create Mode. 
+        /// Whether items that exceed the Availability Limit should be shown in Create Mode.
         /// </summary>
         public bool HideItemsOverAvailLimit
         {

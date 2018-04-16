@@ -30,7 +30,7 @@ namespace Chummer
     public partial class frmPriorityMetatype : Form
     {
         private readonly Character _objCharacter;
-        
+
         private int _intBuildMethod;
         private bool _blnInitializing = true;
         private readonly List<string> _lstPrioritySkills;
@@ -217,10 +217,10 @@ namespace Chummer
             {
                 SumtoTen();
             }
-            
+
             // Add Possession and Inhabitation to the list of Critter Tradition variations.
-            tipTooltip.SetToolTip(chkPossessionBased, LanguageManager.GetString("Tip_Metatype_PossessionTradition", GlobalOptions.Language));
-            tipTooltip.SetToolTip(chkBloodSpirit, LanguageManager.GetString("Tip_Metatype_BloodSpirit", GlobalOptions.Language));
+            GlobalOptions.ToolTipProcessor.SetToolTip(chkPossessionBased, LanguageManager.GetString("Tip_Metatype_PossessionTradition", GlobalOptions.Language));
+            GlobalOptions.ToolTipProcessor.SetToolTip(chkBloodSpirit, LanguageManager.GetString("Tip_Metatype_BloodSpirit", GlobalOptions.Language));
             
             List<ListItem> lstMethods = new List<ListItem>
             {
@@ -285,7 +285,7 @@ namespace Chummer
                         break;
                     }
                 }
-                
+
                 if (xmlTalentNode != null)
                 {
                     string strSkillCount = xmlTalentNode.SelectSingleNode("skillqty")?.Value ?? xmlTalentNode.SelectSingleNode("skillgroupqty")?.Value ?? string.Empty;
@@ -436,7 +436,7 @@ namespace Chummer
                                 }
                             }
                         }
-                        
+
                         if (int.TryParse(xmlTalentNode.SelectSingleNode("specialattribpoints")?.Value, out int intTalentSpecialAttribPoints))
                             intSpecialAttribPoints += intTalentSpecialAttribPoints;
 
@@ -611,7 +611,7 @@ namespace Chummer
             {
                 string strSelectedMetavariant = cboMetavariant.SelectedValue.ToString();
                 string strSelectedMetatypeCategory = cboCategory.SelectedValue?.ToString();
-                
+
                 // If this is a Shapeshifter, a Metavariant must be selected. Default to Human if None is selected.
                 if (strSelectedMetatypeCategory == "Shapeshifter" && strSelectedMetavariant == "None")
                     strSelectedMetavariant = "Human";
@@ -644,27 +644,33 @@ namespace Chummer
                 _objCharacter.MetatypeBP = Convert.ToInt32(lblMetavariantBP.Text);
 
                 // Set Metatype information.
-                _objCharacter.BOD.AssignLimits(ExpressionToString(charNode["bodmin"]?.InnerText, intForce, intMinModifier), ExpressionToString(charNode["bodmax"]?.InnerText, intForce, intMaxModifier), ExpressionToString(charNode["bodaug"]?.InnerText, intForce, intMaxModifier));
-                _objCharacter.AGI.AssignLimits(ExpressionToString(charNode["agimin"]?.InnerText, intForce, intMinModifier), ExpressionToString(charNode["agimax"]?.InnerText, intForce, intMaxModifier), ExpressionToString(charNode["agiaug"]?.InnerText, intForce, intMaxModifier));
-                _objCharacter.REA.AssignLimits(ExpressionToString(charNode["reamin"]?.InnerText, intForce, intMinModifier), ExpressionToString(charNode["reamax"]?.InnerText, intForce, intMaxModifier), ExpressionToString(charNode["reaaug"]?.InnerText, intForce, intMaxModifier));
-                _objCharacter.STR.AssignLimits(ExpressionToString(charNode["strmin"]?.InnerText, intForce, intMinModifier), ExpressionToString(charNode["strmax"]?.InnerText, intForce, intMaxModifier), ExpressionToString(charNode["straug"]?.InnerText, intForce, intMaxModifier));
-                _objCharacter.CHA.AssignLimits(ExpressionToString(charNode["chamin"]?.InnerText, intForce, intMinModifier), ExpressionToString(charNode["chamax"]?.InnerText, intForce, intMaxModifier), ExpressionToString(charNode["chaaug"]?.InnerText, intForce, intMaxModifier));
-                _objCharacter.INT.AssignLimits(ExpressionToString(charNode["intmin"]?.InnerText, intForce, intMinModifier), ExpressionToString(charNode["intmax"]?.InnerText, intForce, intMaxModifier), ExpressionToString(charNode["intaug"]?.InnerText, intForce, intMaxModifier));
-                _objCharacter.LOG.AssignLimits(ExpressionToString(charNode["logmin"]?.InnerText, intForce, intMinModifier), ExpressionToString(charNode["logmax"]?.InnerText, intForce, intMaxModifier), ExpressionToString(charNode["logaug"]?.InnerText, intForce, intMaxModifier));
-                _objCharacter.WIL.AssignLimits(ExpressionToString(charNode["wilmin"]?.InnerText, intForce, intMinModifier), ExpressionToString(charNode["wilmax"]?.InnerText, intForce, intMaxModifier), ExpressionToString(charNode["wilaug"]?.InnerText, intForce, intMaxModifier));
-                _objCharacter.MAG.AssignLimits(ExpressionToString(charNode["magmin"]?.InnerText, intForce, intMinModifier), ExpressionToString(charNode["magmax"]?.InnerText, intForce, intMaxModifier), ExpressionToString(charNode["magaug"]?.InnerText, intForce, intMaxModifier));
-                _objCharacter.MAGAdept.AssignLimits(ExpressionToString(charNode["magmin"]?.InnerText, intForce, intMinModifier), ExpressionToString(charNode["magmax"]?.InnerText, intForce, intMaxModifier), ExpressionToString(charNode["magaug"]?.InnerText, intForce, intMaxModifier));
-                _objCharacter.RES.AssignLimits(ExpressionToString(charNode["resmin"]?.InnerText, intForce, intMinModifier), ExpressionToString(charNode["resmax"]?.InnerText, intForce, intMaxModifier), ExpressionToString(charNode["resaug"]?.InnerText, intForce, intMaxModifier));
-                _objCharacter.EDG.AssignLimits(ExpressionToString(charNode["edgmin"]?.InnerText, intForce, intMinModifier), ExpressionToString(charNode["edgmax"]?.InnerText, intForce, intMaxModifier), ExpressionToString(charNode["edgaug"]?.InnerText, intForce, intMaxModifier));
-                _objCharacter.ESS.AssignLimits(ExpressionToString(charNode["essmin"]?.InnerText, intForce, 0),              ExpressionToString(charNode["essmax"]?.InnerText, intForce, 0),              ExpressionToString(charNode["essaug"]?.InnerText, intForce, 0));
-                _objCharacter.DEP.AssignLimits(ExpressionToString(charNode["depmin"]?.InnerText, intForce, intMinModifier), ExpressionToString(charNode["depmax"]?.InnerText, intForce, intMaxModifier), ExpressionToString(charNode["depaug"]?.InnerText, intForce, intMaxModifier));
+                _objCharacter.BOD.AssignLimits( CommonFunctions.ExpressionToString(charNode["bodmin"]?.InnerText, intForce, intMinModifier),  CommonFunctions.ExpressionToString(charNode["bodmax"]?.InnerText, intForce, intMaxModifier),  CommonFunctions.ExpressionToString(charNode["bodaug"]?.InnerText, intForce, intMaxModifier));
+                _objCharacter.AGI.AssignLimits( CommonFunctions.ExpressionToString(charNode["agimin"]?.InnerText, intForce, intMinModifier),  CommonFunctions.ExpressionToString(charNode["agimax"]?.InnerText, intForce, intMaxModifier),  CommonFunctions.ExpressionToString(charNode["agiaug"]?.InnerText, intForce, intMaxModifier));
+                _objCharacter.REA.AssignLimits( CommonFunctions.ExpressionToString(charNode["reamin"]?.InnerText, intForce, intMinModifier),  CommonFunctions.ExpressionToString(charNode["reamax"]?.InnerText, intForce, intMaxModifier),  CommonFunctions.ExpressionToString(charNode["reaaug"]?.InnerText, intForce, intMaxModifier));
+                _objCharacter.STR.AssignLimits( CommonFunctions.ExpressionToString(charNode["strmin"]?.InnerText, intForce, intMinModifier),  CommonFunctions.ExpressionToString(charNode["strmax"]?.InnerText, intForce, intMaxModifier),  CommonFunctions.ExpressionToString(charNode["straug"]?.InnerText, intForce, intMaxModifier));
+                _objCharacter.CHA.AssignLimits( CommonFunctions.ExpressionToString(charNode["chamin"]?.InnerText, intForce, intMinModifier),  CommonFunctions.ExpressionToString(charNode["chamax"]?.InnerText, intForce, intMaxModifier),  CommonFunctions.ExpressionToString(charNode["chaaug"]?.InnerText, intForce, intMaxModifier));
+                _objCharacter.INT.AssignLimits( CommonFunctions.ExpressionToString(charNode["intmin"]?.InnerText, intForce, intMinModifier),  CommonFunctions.ExpressionToString(charNode["intmax"]?.InnerText, intForce, intMaxModifier),  CommonFunctions.ExpressionToString(charNode["intaug"]?.InnerText, intForce, intMaxModifier));
+                _objCharacter.LOG.AssignLimits( CommonFunctions.ExpressionToString(charNode["logmin"]?.InnerText, intForce, intMinModifier),  CommonFunctions.ExpressionToString(charNode["logmax"]?.InnerText, intForce, intMaxModifier),  CommonFunctions.ExpressionToString(charNode["logaug"]?.InnerText, intForce, intMaxModifier));
+                _objCharacter.WIL.AssignLimits( CommonFunctions.ExpressionToString(charNode["wilmin"]?.InnerText, intForce, intMinModifier),  CommonFunctions.ExpressionToString(charNode["wilmax"]?.InnerText, intForce, intMaxModifier),  CommonFunctions.ExpressionToString(charNode["wilaug"]?.InnerText, intForce, intMaxModifier));
+                _objCharacter.MAG.AssignLimits( CommonFunctions.ExpressionToString(charNode["magmin"]?.InnerText, intForce, intMinModifier),  CommonFunctions.ExpressionToString(charNode["magmax"]?.InnerText, intForce, intMaxModifier),  CommonFunctions.ExpressionToString(charNode["magaug"]?.InnerText, intForce, intMaxModifier));
+                _objCharacter.MAGAdept.AssignLimits( CommonFunctions.ExpressionToString(charNode["magmin"]?.InnerText, intForce, intMinModifier),  CommonFunctions.ExpressionToString(charNode["magmax"]?.InnerText, intForce, intMaxModifier),  CommonFunctions.ExpressionToString(charNode["magaug"]?.InnerText, intForce, intMaxModifier));
+                _objCharacter.RES.AssignLimits( CommonFunctions.ExpressionToString(charNode["resmin"]?.InnerText, intForce, intMinModifier),  CommonFunctions.ExpressionToString(charNode["resmax"]?.InnerText, intForce, intMaxModifier),  CommonFunctions.ExpressionToString(charNode["resaug"]?.InnerText, intForce, intMaxModifier));
+                _objCharacter.EDG.AssignLimits( CommonFunctions.ExpressionToString(charNode["edgmin"]?.InnerText, intForce, intMinModifier),  CommonFunctions.ExpressionToString(charNode["edgmax"]?.InnerText, intForce, intMaxModifier),  CommonFunctions.ExpressionToString(charNode["edgaug"]?.InnerText, intForce, intMaxModifier));
+                _objCharacter.ESS.AssignLimits( CommonFunctions.ExpressionToString(charNode["essmin"]?.InnerText, intForce, 0),  CommonFunctions.ExpressionToString(charNode["essmax"]?.InnerText, intForce, 0),  CommonFunctions.ExpressionToString(charNode["essaug"]?.InnerText, intForce, 0));
+                _objCharacter.DEP.AssignLimits( CommonFunctions.ExpressionToString(charNode["depmin"]?.InnerText, intForce, intMinModifier),  CommonFunctions.ExpressionToString(charNode["depmax"]?.InnerText, intForce, intMaxModifier),  CommonFunctions.ExpressionToString(charNode["depaug"]?.InnerText, intForce, intMaxModifier));
                 if (charNode["halveattributepoints"] != null)
                     boolHalveAttributePriorityPoints = true;
 
                 _objCharacter.Metatype = strSelectedMetatype;
                 _objCharacter.MetatypeCategory = strSelectedMetatypeCategory;
                 _objCharacter.Metavariant = strSelectedMetavariant == "None" ? string.Empty : strSelectedMetavariant;
-                
+
+                // We only reverted to the base metatype to get the attributes.
+                if (strSelectedMetatypeCategory == "Shapeshifter")
+                {
+                    charNode = objXmlMetavariant ?? objXmlMetatype;
+                }
+
                 // Determine if the Metatype has any bonuses.
                 XmlNode xmlBonusNode = charNode["bonus"];
                 if (xmlBonusNode != null)
@@ -697,7 +703,7 @@ namespace Chummer
                     _objCharacter.CritterPowers.Add(objPower);
                 }
 
-                //Load any natural weapons the character has. 
+                //Load any natural weapons the character has.
                 foreach (XmlNode objXmlNaturalWeapon in charNode.SelectNodes("nautralweapons/naturalweapon"))
                 {
                     Weapon objWeapon = new Weapon(_objCharacter)
@@ -751,7 +757,7 @@ namespace Chummer
                         break;
                     }
                 }
-                    
+
 
                 if ("Aspected Magician".Equals(cboTalents.SelectedValue))
                 {
@@ -824,7 +830,7 @@ namespace Chummer
                         break;
                     }
                 }
-                
+
                 // Set Special Attributes
                 _objCharacter.Special = Convert.ToInt32(lblSpecial.Text);
                 _objCharacter.TotalSpecial = _objCharacter.Special;
@@ -887,7 +893,7 @@ namespace Chummer
                 }
 
                 // Set free contact points
-                _objCharacter.ContactPoints = _objCharacter.CHA.Value * _objCharacter.ContactMultiplier;
+                _objCharacter.OnPropertyChanged(nameof(Character.ContactPoints));
 
                 // Set starting karma
                 _objCharacter.BuildKarma = _objCharacter.MaxKarma;
@@ -1005,41 +1011,10 @@ namespace Chummer
 
             return value;
         }
-        /// <summary>
-        /// Convert Force, 1D6, or 2D6 into a usable value.
-        /// </summary>
-        /// <param name="strIn">Expression to convert.</param>
-        /// <param name="intForce">Force value to use.</param>
-        /// <param name="intOffset">Dice offset.</param>
-        /// <returns></returns>
-        private static string ExpressionToString(string strIn, int intForce, int intOffset)
-        {
-            if (string.IsNullOrWhiteSpace(strIn))
-                return intOffset.ToString();
-            int intValue = 1;
-            string strForce = intForce.ToString();
-            // This statement is wrapped in a try/catch since trying 1 div 2 results in an error with XSLT.
-            try
-            {
-                object objProcess = CommonFunctions.EvaluateInvariantXPath(strIn.Replace("/", " div ").Replace("F", strForce).Replace("1D6", strForce).Replace("2D6", strForce), out bool blnIsSuccess);
-                if (blnIsSuccess)
-                    intValue = Convert.ToInt32(Math.Ceiling((double)objProcess));
-            }
-            catch (OverflowException) { } // Result is text and not a double
-            catch (InvalidCastException) { }
-            intValue += intOffset;
-            if (intForce > 0)
-            {
-                if (intValue < 1)
-                    intValue = 1;
-            }
-            else if (intValue < 0)
-                intValue = 0;
-            return intValue.ToString();
-        }
 
         void RefreshSelectedMetatype()
         {
+            string strSpaceCharacter = LanguageManager.GetString("String_Space", GlobalOptions.Language);
             string strSelectedMetatype = lstMetatypes.SelectedValue?.ToString();
             string strSelectedMetavariant = cboMetavariant.SelectedValue?.ToString();
             string strSelectedHeritage = cboHeritage.SelectedValue?.ToString();
@@ -1070,7 +1045,7 @@ namespace Chummer
                 {
                     cmdOK.Enabled = true;
                 }
-                
+
                 lblBOD.Text = $"{objXmlMetavariant.SelectSingleNode("bodmin")?.Value}/{objXmlMetavariant.SelectSingleNode("bodmax")?.Value} ({objXmlMetavariant.SelectSingleNode("bodaug")?.Value})";
                 lblAGI.Text = $"{objXmlMetavariant.SelectSingleNode("agimin")?.Value}/{objXmlMetavariant.SelectSingleNode("agimax")?.Value} ({objXmlMetavariant.SelectSingleNode("agiaug")?.Value})";
                 lblREA.Text = $"{objXmlMetavariant.SelectSingleNode("reamin")?.Value}/{objXmlMetavariant.SelectSingleNode("reamax")?.Value} ({objXmlMetavariant.SelectSingleNode("reaaug")?.Value})";
@@ -1111,14 +1086,14 @@ namespace Chummer
 
                         string strSelect = objXmlQuality.SelectSingleNode("@select")?.Value;
                         if (!string.IsNullOrEmpty(strSelect))
-                            strQuality += " (" + LanguageManager.TranslateExtra(strSelect, GlobalOptions.Language) + ')';
+                            strQuality += strSpaceCharacter + '(' + LanguageManager.TranslateExtra(strSelect, GlobalOptions.Language) + ')';
                     }
                     else
                     {
                         strQuality = objXmlQuality.Value;
                         string strSelect = objXmlQuality.SelectSingleNode("@select")?.Value;
                         if (!string.IsNullOrEmpty(strSelect))
-                            strQuality += " (" + strSelect + ')';
+                            strQuality += strSpaceCharacter + '(' + strSelect + ')';
                     }
                     if (dicQualities.ContainsKey(strQuality))
                     {
@@ -1136,10 +1111,10 @@ namespace Chummer
                         strQualities.Append(objLoopQuality.Key);
                         if (objLoopQuality.Value > 1)
                         {
-                            strQualities.Append(' ');
-                            strQualities.Append(objLoopQuality.Value.ToString());
+                            strQualities.Append(strSpaceCharacter);
+                            strQualities.Append(objLoopQuality.Value.ToString(GlobalOptions.CultureInfo));
                         }
-                        strQualities.Append(", ");
+                        strQualities.Append(',' + strSpaceCharacter);
                     }
                     strQualities.Length -= 2;
                     lblMetavariantQualities.Text = strQualities.ToString();
@@ -1174,14 +1149,14 @@ namespace Chummer
 
                         string strSelect = xmlQuality.SelectSingleNode("@select")?.Value;
                         if (!string.IsNullOrEmpty(strSelect))
-                            strQuality += " (" + LanguageManager.TranslateExtra(strSelect, GlobalOptions.Language) + ')';
+                            strQuality += strSpaceCharacter + '(' + LanguageManager.TranslateExtra(strSelect, GlobalOptions.Language) + ')';
                     }
                     else
                     {
                         strQuality = xmlQuality.Value;
                         string strSelect = xmlQuality.SelectSingleNode("@select")?.Value;
                         if (!string.IsNullOrEmpty(strSelect))
-                            strQuality += " (" + strSelect + ')';
+                            strQuality += strSpaceCharacter + '(' + strSelect + ')';
                     }
                     if (dicQualities.ContainsKey(strQuality))
                     {
@@ -1199,10 +1174,10 @@ namespace Chummer
                         strQualities.Append(objLoopQuality.Key);
                         if (objLoopQuality.Value > 1)
                         {
-                            strQualities.Append(' ');
-                            strQualities.Append(objLoopQuality.Value.ToString());
+                            strQualities.Append(strSpaceCharacter);
+                            strQualities.Append(objLoopQuality.Value.ToString(GlobalOptions.CultureInfo));
                         }
-                        strQualities.Append(", ");
+                        strQualities.Append(',' + strSpaceCharacter);
                     }
                     strQualities.Length -= 2;
                     lblMetavariantQualities.Text = strQualities.ToString();
@@ -1261,13 +1236,15 @@ namespace Chummer
                 lblMetavariantBP.Text = string.Empty;
                 cmdOK.Enabled = false;
             }
+
+            MoveControls();
         }
 
         void PopulateTalents()
         {
             // Load the Priority information.
             List<ListItem> lstTalent = new List<ListItem>();
-            
+
             // Populate the Priority Category list.
             XPathNodeIterator xmlBaseTalentPriorityList = _xmlBasePriorityDataNode.Select("priorities/priority[category = \"Talent\" and value = \"" + cboTalent.SelectedValue.ToString() + "\" and (not(gameplayoption) or gameplayoption = \"" + _objCharacter.GameplayOption + "\")]");
             foreach (XPathNavigator xmlBaseTalentPriority in xmlBaseTalentPriorityList)
@@ -1591,7 +1568,7 @@ namespace Chummer
         private void LoadMetatypes()
         {
             List<ListItem> lstCategory = new List<ListItem>();
-            
+
             // Populate the Metatype Category list.
             // Create a list of any Categories that should not be in the list.
             HashSet<string> lstRemoveCategory = new HashSet<string>();
@@ -1714,6 +1691,16 @@ namespace Chummer
         private void chkPossessionBased_CheckedChanged(object sender, EventArgs e)
         {
             cboPossessionMethod.Enabled = chkPossessionBased.Checked;
+        }
+        private void MoveControls()
+        {
+            if (lblMetavariantQualities.Bottom > cboPossessionMethod.Top)
+            {
+                Height += lblMetavariantQualities.Bottom - cboPossessionMethod.Top + 20;
+            }
+
+            if (lblMetavariantQualities.Right <= pnlMetatypes.Right) return;
+            Width += (lblMetavariantQualities.Right - pnlMetatypes.Right) + 20;
         }
         #endregion
     }

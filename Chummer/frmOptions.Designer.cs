@@ -16,7 +16,6 @@ namespace Chummer
             if (disposing)
             {
                 components?.Dispose();
-                tipTooltip?.Dispose();
             }
             base.Dispose(disposing);
         }
@@ -247,6 +246,7 @@ namespace Chummer
             this.chkAllowSkillRegrouping = new System.Windows.Forms.CheckBox();
             this.chkNoSingleArmorEncumbrance = new System.Windows.Forms.CheckBox();
             this.tabHouseRules = new System.Windows.Forms.TabPage();
+            this.chkNoArmorEncumbrance = new System.Windows.Forms.CheckBox();
             this.chkEnemyKarmaQualityLimit = new System.Windows.Forms.CheckBox();
             this.chkCompensateSkillGroupKarmaDifference = new System.Windows.Forms.CheckBox();
             this.chkMysAdeptSecondMAGAttribute = new System.Windows.Forms.CheckBox();
@@ -284,7 +284,8 @@ namespace Chummer
             this.lblSetting = new System.Windows.Forms.Label();
             this.lblSettingName = new System.Windows.Forms.Label();
             this.txtSettingName = new System.Windows.Forms.TextBox();
-            this.tipTooltip = new TheArtOfDev.HtmlRenderer.WinForms.HtmlToolTip();
+            this.nudKarmaMysticAdeptPowerPoint = new System.Windows.Forms.NumericUpDown();
+            this.lblKarmaMysticAdeptPowerPoint = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.nudKarmaComplexFormOption)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.nudKarmaMetamagic)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.nudKarmaInitiation)).BeginInit();
@@ -351,13 +352,14 @@ namespace Chummer
             ((System.ComponentModel.ISupportInitialize)(this.nudDroneArmorMultiplier)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.nudKnowledgeMultiplier)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.nudContactMultiplier)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.nudKarmaMysticAdeptPowerPoint)).BeginInit();
             this.SuspendLayout();
             // 
             // cmdOK
             // 
             this.cmdOK.Anchor = System.Windows.Forms.AnchorStyles.Bottom;
             this.cmdOK.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.cmdOK.Location = new System.Drawing.Point(370, 636);
+            this.cmdOK.Location = new System.Drawing.Point(370, 670);
             this.cmdOK.Name = "cmdOK";
             this.cmdOK.Size = new System.Drawing.Size(75, 23);
             this.cmdOK.TabIndex = 5;
@@ -1010,8 +1012,6 @@ namespace Chummer
             this.chkUnarmedSkillImprovements.TabIndex = 0;
             this.chkUnarmedSkillImprovements.Tag = "Checkbox_Options_UnarmedSkillImprovements";
             this.chkUnarmedSkillImprovements.Text = "Unarmed Combat-based Weapons Benefit from Unarmed Attack Bonuses";
-            this.tipTooltip.SetToolTip(this.chkUnarmedSkillImprovements, "Enabling this house rule allows Knucks to benefit from bonuses that apply to unar" +
-        "med attacks including DV bonuses.");
             this.chkUnarmedSkillImprovements.UseVisualStyleBackColor = true;
             this.chkUnarmedSkillImprovements.CheckedChanged += new System.EventHandler(this.OptionsChanged);
             // 
@@ -1026,7 +1026,7 @@ namespace Chummer
             this.tabControl1.Location = new System.Drawing.Point(0, 32);
             this.tabControl1.Name = "tabControl1";
             this.tabControl1.SelectedIndex = 0;
-            this.tabControl1.Size = new System.Drawing.Size(815, 602);
+            this.tabControl1.Size = new System.Drawing.Size(815, 632);
             this.tabControl1.TabIndex = 4;
             // 
             // tabGeneral
@@ -1887,6 +1887,8 @@ namespace Chummer
             // tabKarmaCosts
             // 
             this.tabKarmaCosts.BackColor = System.Drawing.SystemColors.Control;
+            this.tabKarmaCosts.Controls.Add(this.nudKarmaMysticAdeptPowerPoint);
+            this.tabKarmaCosts.Controls.Add(this.lblKarmaMysticAdeptPowerPoint);
             this.tabKarmaCosts.Controls.Add(this.nudKarmaInitiationFlat);
             this.tabKarmaCosts.Controls.Add(this.lblKarmaKnowledgeSpecialization);
             this.tabKarmaCosts.Controls.Add(this.nudKarmaKnowledgeSpecialization);
@@ -2009,7 +2011,7 @@ namespace Chummer
             this.tabKarmaCosts.Location = new System.Drawing.Point(4, 22);
             this.tabKarmaCosts.Name = "tabKarmaCosts";
             this.tabKarmaCosts.Padding = new System.Windows.Forms.Padding(3);
-            this.tabKarmaCosts.Size = new System.Drawing.Size(807, 576);
+            this.tabKarmaCosts.Size = new System.Drawing.Size(807, 606);
             this.tabKarmaCosts.TabIndex = 1;
             this.tabKarmaCosts.Tag = "Tab_Options_KarmaCosts";
             this.tabKarmaCosts.Text = "Karma Costs";
@@ -2830,6 +2832,7 @@ namespace Chummer
             // 
             this.tabHouseRules.AutoScroll = true;
             this.tabHouseRules.BackColor = System.Drawing.SystemColors.Control;
+            this.tabHouseRules.Controls.Add(this.chkNoArmorEncumbrance);
             this.tabHouseRules.Controls.Add(this.chkEnemyKarmaQualityLimit);
             this.tabHouseRules.Controls.Add(this.chkCompensateSkillGroupKarmaDifference);
             this.tabHouseRules.Controls.Add(this.chkMysAdeptSecondMAGAttribute);
@@ -2871,6 +2874,18 @@ namespace Chummer
             this.tabHouseRules.Tag = "Tab_Options_HouseRules";
             this.tabHouseRules.Text = "House Rules";
             // 
+            // chkNoArmorEncumbrance
+            // 
+            this.chkNoArmorEncumbrance.AutoSize = true;
+            this.chkNoArmorEncumbrance.Location = new System.Drawing.Point(458, 210);
+            this.chkNoArmorEncumbrance.Name = "chkNoArmorEncumbrance";
+            this.chkNoArmorEncumbrance.Size = new System.Drawing.Size(139, 17);
+            this.chkNoArmorEncumbrance.TabIndex = 38;
+            this.chkNoArmorEncumbrance.Tag = "Checkbox_Options_NoArmorEncumbrance";
+            this.chkNoArmorEncumbrance.Text = "No Armor Encumbrance";
+            this.chkNoArmorEncumbrance.UseVisualStyleBackColor = true;
+            this.chkNoArmorEncumbrance.CheckedChanged += new System.EventHandler(this.OptionsChanged);
+            // 
             // chkEnemyKarmaQualityLimit
             // 
             this.chkEnemyKarmaQualityLimit.AutoSize = true;
@@ -2893,7 +2908,6 @@ namespace Chummer
             this.chkCompensateSkillGroupKarmaDifference.Tag = "Checkbox_Options_CompensateSkillGroupKarmaDifference";
             this.chkCompensateSkillGroupKarmaDifference.Text = "Compensate for higher karma costs when raising the rating of the last skill in a " +
     "skill group";
-            this.tipTooltip.SetToolTip(this.chkCompensateSkillGroupKarmaDifference, "Allows Skill Points to be spent on skills belonging to a broken skill group.");
             this.chkCompensateSkillGroupKarmaDifference.UseVisualStyleBackColor = true;
             this.chkCompensateSkillGroupKarmaDifference.CheckedChanged += new System.EventHandler(this.OptionsChanged);
             // 
@@ -2907,7 +2921,6 @@ namespace Chummer
             this.chkMysAdeptSecondMAGAttribute.Tag = "Checkbox_Options_MysAdeptSecondMAGAttribute";
             this.chkMysAdeptSecondMAGAttribute.Text = "Mystic Adepts use second MAG attribute for Adept abilities instead of special PP " +
     "rules";
-            this.tipTooltip.SetToolTip(this.chkMysAdeptSecondMAGAttribute, "Allows Skill Points to be spent on skills belonging to a broken skill group.");
             this.chkMysAdeptSecondMAGAttribute.UseVisualStyleBackColor = true;
             this.chkMysAdeptSecondMAGAttribute.CheckedChanged += new System.EventHandler(this.OptionsChanged);
             // 
@@ -2920,7 +2933,6 @@ namespace Chummer
             this.chkAllowPointBuySpecializationsOnKarmaSkills.TabIndex = 34;
             this.chkAllowPointBuySpecializationsOnKarmaSkills.Tag = "Checkbox_Options_AllowPointBuySpecializationsOnKarmaSkills";
             this.chkAllowPointBuySpecializationsOnKarmaSkills.Text = "Allow skill points to be used to buy specializations for karma-bought skills";
-            this.tipTooltip.SetToolTip(this.chkAllowPointBuySpecializationsOnKarmaSkills, "Allows Skill Points to be spent on skills belonging to a broken skill group.");
             this.chkAllowPointBuySpecializationsOnKarmaSkills.UseVisualStyleBackColor = true;
             this.chkAllowPointBuySpecializationsOnKarmaSkills.CheckedChanged += new System.EventHandler(this.OptionsChanged);
             // 
@@ -3074,8 +3086,6 @@ namespace Chummer
             this.chkDontDoubleQualityRefunds.TabIndex = 21;
             this.chkDontDoubleQualityRefunds.Tag = "Checkbox_Options_DontDoubleNegativeQualityRefunds";
             this.chkDontDoubleQualityRefunds.Text = "Don\'t double the cost of refunding Negative Qualities in Career Mode";
-            this.tipTooltip.SetToolTip(this.chkDontDoubleQualityRefunds, "Allows characters in Career mode to remove Negative Qualities and buy off Negativ" +
-        "e at their normal price instead of doubling them.");
             this.chkDontDoubleQualityRefunds.UseVisualStyleBackColor = true;
             this.chkDontDoubleQualityRefunds.CheckedChanged += new System.EventHandler(this.OptionsChanged);
             // 
@@ -3100,7 +3110,6 @@ namespace Chummer
             this.chkAllowCyberwareESSDiscounts.TabIndex = 19;
             this.chkAllowCyberwareESSDiscounts.Tag = "Checkbox_Options_AllowCyberwareESSDiscounts";
             this.chkAllowCyberwareESSDiscounts.Text = "Allow Cyber/Bioware Essence costs to be customized";
-            this.tipTooltip.SetToolTip(this.chkAllowCyberwareESSDiscounts, "Permits adjustment of essence costs on a per-item basis.");
             this.chkAllowCyberwareESSDiscounts.UseVisualStyleBackColor = true;
             this.chkAllowCyberwareESSDiscounts.CheckedChanged += new System.EventHandler(this.OptionsChanged);
             // 
@@ -3253,7 +3262,6 @@ namespace Chummer
             this.chkAllowInitiation.TabIndex = 7;
             this.chkAllowInitiation.Tag = "Checkbox_Options_AllowInitiation";
             this.chkAllowInitiation.Text = "Allow Initiation/Submersion in Create mode";
-            this.tipTooltip.SetToolTip(this.chkAllowInitiation, "Allows Initiation/Submersion using Karma during Create mode.");
             this.chkAllowInitiation.UseVisualStyleBackColor = true;
             this.chkAllowInitiation.CheckedChanged += new System.EventHandler(this.OptionsChanged);
             // 
@@ -3266,7 +3274,6 @@ namespace Chummer
             this.chkStrictSkillGroups.TabIndex = 6;
             this.chkStrictSkillGroups.Tag = "Checkbox_Options_StrictSkillGroups";
             this.chkStrictSkillGroups.Text = "Strict interprentation of breaking skill groups in create mode";
-            this.tipTooltip.SetToolTip(this.chkStrictSkillGroups, "Allows Skill Points to be spent on skills belonging to a broken skill group.");
             this.chkStrictSkillGroups.UseVisualStyleBackColor = true;
             this.chkStrictSkillGroups.CheckedChanged += new System.EventHandler(this.OptionsChanged);
             // 
@@ -3279,8 +3286,6 @@ namespace Chummer
             this.chkDontDoubleQualityPurchases.TabIndex = 5;
             this.chkDontDoubleQualityPurchases.Tag = "Checkbox_Options_DontDoubleQualityPurchases";
             this.chkDontDoubleQualityPurchases.Text = "Don\'t double the cost of purchasing Positive Qualities in Career Mode";
-            this.tipTooltip.SetToolTip(this.chkDontDoubleQualityPurchases, "Allows characters in Career mode to purchase Positive Qualities and buy off Negat" +
-        "ive at their normal price instead of doubling them.");
             this.chkDontDoubleQualityPurchases.UseVisualStyleBackColor = true;
             this.chkDontDoubleQualityPurchases.CheckedChanged += new System.EventHandler(this.OptionsChanged);
             // 
@@ -3293,9 +3298,8 @@ namespace Chummer
             this.chkCyberlegMovement.TabIndex = 2;
             this.chkCyberlegMovement.Tag = "Checkbox_Options_CyberlegMovement";
             this.chkCyberlegMovement.Text = "Use Cyberleg Stats for Movement";
-            this.tipTooltip.SetToolTip(this.chkCyberlegMovement, "Allows characters with two cyberlegs to use their cyberleg\'s AGI when calculating" +
-        " movement rates.");
             this.chkCyberlegMovement.UseVisualStyleBackColor = true;
+            this.chkCyberlegMovement.CheckedChanged += new System.EventHandler(this.OptionsChanged);
             // 
             // chkIgnoreArt
             // 
@@ -3306,9 +3310,8 @@ namespace Chummer
             this.chkIgnoreArt.TabIndex = 1;
             this.chkIgnoreArt.Tag = "Checkbox_Options_IgnoreArt";
             this.chkIgnoreArt.Text = "Ignore Art Requirements from Street Grimoire";
-            this.tipTooltip.SetToolTip(this.chkIgnoreArt, "Allows all metamagics, enhancements, enchantments, and rituals to ignore the Art " +
-        "requirement detailed in Street Grimoire.");
             this.chkIgnoreArt.UseVisualStyleBackColor = true;
+            this.chkIgnoreArt.CheckedChanged += new System.EventHandler(this.OptionsChanged);
             // 
             // cboSetting
             // 
@@ -3348,23 +3351,30 @@ namespace Chummer
             this.txtSettingName.Size = new System.Drawing.Size(190, 20);
             this.txtSettingName.TabIndex = 3;
             // 
-            // tipTooltip
+            // nudKarmaMysticAdeptPowerPoint
             // 
-            this.tipTooltip.AllowLinksHandling = true;
-            this.tipTooltip.AutoPopDelay = 15000;
-            this.tipTooltip.BaseStylesheet = null;
-            this.tipTooltip.InitialDelay = 500;
-            this.tipTooltip.MaximumSize = new System.Drawing.Size(0, 0);
-            this.tipTooltip.OwnerDraw = true;
-            this.tipTooltip.ReshowDelay = 100;
-            this.tipTooltip.TooltipCssClass = "htmltooltip";
+            this.nudKarmaMysticAdeptPowerPoint.Location = new System.Drawing.Point(191, 576);
+            this.nudKarmaMysticAdeptPowerPoint.Name = "nudKarmaMysticAdeptPowerPoint";
+            this.nudKarmaMysticAdeptPowerPoint.Size = new System.Drawing.Size(47, 20);
+            this.nudKarmaMysticAdeptPowerPoint.TabIndex = 123;
+            this.nudKarmaMysticAdeptPowerPoint.ValueChanged += new System.EventHandler(this.OptionsChanged);
+            // 
+            // lblKarmaMysticAdeptPowerPoint
+            // 
+            this.lblKarmaMysticAdeptPowerPoint.AutoSize = true;
+            this.lblKarmaMysticAdeptPowerPoint.Location = new System.Drawing.Point(8, 578);
+            this.lblKarmaMysticAdeptPowerPoint.Name = "lblKarmaMysticAdeptPowerPoint";
+            this.lblKarmaMysticAdeptPowerPoint.Size = new System.Drawing.Size(128, 13);
+            this.lblKarmaMysticAdeptPowerPoint.TabIndex = 122;
+            this.lblKarmaMysticAdeptPowerPoint.Tag = "Label_Options_KarmaMysticAdeptPowerPoint";
+            this.lblKarmaMysticAdeptPowerPoint.Text = "Mystic Adept Power Point";
             // 
             // frmOptions
             // 
             this.AcceptButton = this.cmdOK;
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(815, 661);
+            this.ClientSize = new System.Drawing.Size(815, 695);
             this.Controls.Add(this.txtSettingName);
             this.Controls.Add(this.lblSettingName);
             this.Controls.Add(this.cboSetting);
@@ -3456,6 +3466,7 @@ namespace Chummer
             ((System.ComponentModel.ISupportInitialize)(this.nudDroneArmorMultiplier)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.nudKnowledgeMultiplier)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.nudContactMultiplier)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.nudKarmaMysticAdeptPowerPoint)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -3642,7 +3653,6 @@ namespace Chummer
         private System.Windows.Forms.CheckBox chkCyberlegMovement;
         private System.Windows.Forms.CheckBox chkDontDoubleQualityPurchases;
         private System.Windows.Forms.CheckBox chkStrictSkillGroups;
-        private TheArtOfDev.HtmlRenderer.WinForms.HtmlToolTip tipTooltip;
         private System.Windows.Forms.CheckBox chkAllowInitiation;
         private System.Windows.Forms.Label lblPDFParametersLabel;
         private System.Windows.Forms.Label label3;
@@ -3719,5 +3729,8 @@ namespace Chummer
         private System.Windows.Forms.CheckBox chkPrintFreeExpenses;
         private System.Windows.Forms.CheckBox chkEnemyKarmaQualityLimit;
         private ElasticComboBox cboSheetLanguage;
+        private System.Windows.Forms.CheckBox chkNoArmorEncumbrance;
+        private System.Windows.Forms.NumericUpDown nudKarmaMysticAdeptPowerPoint;
+        private System.Windows.Forms.Label lblKarmaMysticAdeptPowerPoint;
     }
 }

@@ -17,6 +17,7 @@
  *  https://github.com/chummer5a/chummer5a
  */
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Text;
 using System.Windows.Forms;
@@ -27,6 +28,7 @@ namespace Chummer
     /// <summary>
     /// An Initiation Grade.
     /// </summary>
+    [DebuggerDisplay("{" + nameof(Grade) + "}")]
     public class InitiationGrade : IHasInternalId, IComparable
     {
         private Guid _guiID;
@@ -198,23 +200,24 @@ namespace Chummer
         /// </summary>
         public string Text(string strLanguage)
         {
+            string strSpaceCharacter = LanguageManager.GetString("String_Space", strLanguage);
             StringBuilder strReturn = new StringBuilder(LanguageManager.GetString("String_Grade", strLanguage));
-            strReturn.Append(' ');
+            strReturn.Append(strSpaceCharacter);
             strReturn.Append(Grade.ToString());
             if (Group || Ordeal)
             {
-                strReturn.Append(" (");
+                strReturn.Append(strSpaceCharacter + '(');
                 if (Group)
                 {
                     strReturn.Append(Technomancer ? LanguageManager.GetString("String_Network", strLanguage) : LanguageManager.GetString("String_Group", strLanguage));
                     if (Ordeal || Schooling)
-                        strReturn.Append(", ");
+                        strReturn.Append(',' + strSpaceCharacter);
                 }
                 if (Ordeal)
                 {
                     strReturn.Append(Technomancer ? LanguageManager.GetString("String_Task", strLanguage) : LanguageManager.GetString("String_Ordeal", strLanguage));
                     if (Schooling)
-                        strReturn.Append(", ");
+                        strReturn.Append(',' + strSpaceCharacter);
                 }
                 if (Schooling)
                 {
@@ -234,6 +237,19 @@ namespace Chummer
             get => _strNotes;
             set => _strNotes = value;
         }
+
+        public Color PreferredColor
+        {
+            get
+            {
+                if (!string.IsNullOrEmpty(Notes))
+                {
+                    return Color.SaddleBrown;
+                }
+
+                return SystemColors.WindowText;
+            }
+        }
         #endregion
 
         #region Methods
@@ -244,13 +260,10 @@ namespace Chummer
                 ContextMenuStrip = cmsInitiationGrade,
                 Name = InternalId,
                 Text = Text(GlobalOptions.Language),
-                Tag = InternalId
+                Tag = InternalId,
+                ForeColor = PreferredColor,
+                ToolTipText = Notes.WordWrap(100)
             };
-            if (!string.IsNullOrEmpty(Notes))
-            {
-                objNode.ForeColor = Color.SaddleBrown;
-            }
-            objNode.ToolTipText = Notes.WordWrap(100);
             return objNode;
         }
 

@@ -73,9 +73,9 @@ namespace Chummer
 
         private void frmSelectCyberwareSuite_Load(object sender, EventArgs e)
         {
-            if (_objCharacter.DEPEnabled)
+            if (_objCharacter.IsAI)
                 return;
-            
+
             IList<Grade> lstGrades = _objCharacter.GetGradeList(_eSource);
 
             using (XmlNodeList xmlSuiteList = _objXmlDocument.SelectNodes("/chummer/suites/suite"))
@@ -140,7 +140,7 @@ namespace Chummer
             }
 
             lblCyberware.Text = objCyberwareLabelString.ToString();
-            lblEssence.Text = decimal.Round(decTotalESS, _objCharacter.Options.EssenceDecimals, MidpointRounding.AwayFromZero).ToString(GlobalOptions.CultureInfo);
+            lblEssence.Text = decTotalESS.ToString(_objCharacter.Options.EssenceFormat, GlobalOptions.CultureInfo);
             lblCost.Text = decTotalCost.ToString(_objCharacter.Options.NuyenFormat, GlobalOptions.CultureInfo) + '¥';
             lblGrade.Text = objGrade.DisplayName(GlobalOptions.Language);
             _decCost = decTotalCost;
@@ -257,7 +257,7 @@ namespace Chummer
             for (int i = 0; i <= intDepth; ++i)
                 objCyberwareLabelString.Append("   ");
 
-            objCyberwareLabelString.Append(objCyberware.DisplayName(GlobalOptions.Language) + "\n");
+            objCyberwareLabelString.AppendLine(objCyberware.DisplayName(GlobalOptions.Language));
 
             foreach (Cyberware objPlugin in objCyberware.Children)
                 WriteList(objCyberwareLabelString, objPlugin, intDepth + 1);

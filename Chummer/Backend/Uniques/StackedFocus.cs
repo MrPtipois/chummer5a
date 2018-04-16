@@ -19,6 +19,8 @@
 using Chummer.Backend.Equipment;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
@@ -29,6 +31,7 @@ namespace Chummer
     /// <summary>
     /// A Stacked Focus.
     /// </summary>
+    [DebuggerDisplay("{Name(GlobalOptions.DefaultLanguage)}")]
     public class StackedFocus
     {
         private Guid _guiID;
@@ -216,12 +219,12 @@ namespace Chummer
         /// <summary>
         /// Stacked Focus Name.
         /// </summary>
-        public string Name(string strLanguage)
+        public string Name(CultureInfo objCulture, string strLanguage)
         {
             StringBuilder strbldReturn = new StringBuilder();
             foreach (Gear objGear in Gear)
             {
-                strbldReturn.Append(objGear.DisplayName(strLanguage));
+                strbldReturn.Append(objGear.DisplayName(objCulture, strLanguage));
                 strbldReturn.Append(", ");
             }
 
@@ -245,7 +248,7 @@ namespace Chummer
             TreeNode objNode = objGear.CreateTreeNode(cmsStackedFocus);
 
             objNode.Name = InternalId;
-            objNode.Text = LanguageManager.GetString("String_StackedFocus", GlobalOptions.Language) + ": " + Name(GlobalOptions.Language);
+            objNode.Text = LanguageManager.GetString("String_StackedFocus", GlobalOptions.Language) + ": " + Name(GlobalOptions.CultureInfo, GlobalOptions.Language);
             objNode.Tag = InternalId;
             objNode.Checked = Bonded;
 

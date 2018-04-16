@@ -54,7 +54,7 @@ namespace Chummer
                 MessageBox.Show(LanguageManager.GetString("Message_CreatePACKSKit_FileName", GlobalOptions.Language), LanguageManager.GetString("MessageTitle_CreatePACKSKit_FileName", GlobalOptions.Language), MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
-            
+
             // Make sure the file name starts with custom and ends with _packs.xml.
             if (!txtFileName.Text.StartsWith("custom") || !txtFileName.Text.EndsWith("_packs.xml"))
             {
@@ -74,14 +74,14 @@ namespace Chummer
             }
 
             string strPath = Path.Combine(Application.StartupPath, "data", txtFileName.Text);
-            bool blnNewFile = !File.Exists(strPath);
 
             // If this is not a new file, read in the existing contents.
-            XmlDocument objXmlCurrentDocument = new XmlDocument();
-            if (!blnNewFile)
+            XmlDocument objXmlCurrentDocument = null;
+            if (File.Exists(strPath))
             {
                 try
                 {
+                    objXmlCurrentDocument = new XmlDocument();
                     using (StreamReader objStreamReader = new StreamReader(strPath, Encoding.UTF8, true))
                     {
                         objXmlCurrentDocument.Load(objStreamReader);
@@ -114,11 +114,12 @@ namespace Chummer
             objWriter.WriteStartElement("packs");
 
             // If this is not a new file, write out the current contents.
-            if (!blnNewFile)
+            if (objXmlCurrentDocument != null)
             {
-                XmlNodeList objXmlNodeList = objXmlCurrentDocument.SelectNodes("/chummer/*");
-                foreach (XmlNode objXmlNode in objXmlNodeList)
-                    objXmlNode.WriteContentTo(objWriter);
+                using (XmlNodeList objXmlNodeList = objXmlCurrentDocument.SelectNodes("/chummer/*"))
+                    if (objXmlNodeList?.Count > 0)
+                        foreach (XmlNode objXmlNode in objXmlNodeList)
+                            objXmlNode.WriteContentTo(objWriter);
             }
 
             // <pack>
@@ -261,7 +262,7 @@ namespace Chummer
                 //        // </skill>
                 //        objWriter.WriteEndElement();
                 //    }
-                //}  
+                //}
 
                 // Skill Groups.
                 //foreach (SkillGroup objSkillGroup in _objCharacter.SkillGroups)
@@ -548,7 +549,7 @@ namespace Chummer
                         // <weapon>
                         objWriter.WriteStartElement("weapon");
                         objWriter.WriteElementString("name", objWeapon.Name);
-                        
+
                         // Weapon Accessories.
                         if (objWeapon.WeaponAccessories.Count > 0)
                         {

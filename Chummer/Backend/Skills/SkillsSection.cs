@@ -23,11 +23,14 @@ using System.Globalization;
 using System.Linq;
 using System.Xml;
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Chummer.Annotations;
+using Chummer.Backend.Attributes;
 
 namespace Chummer.Backend.Skills
 {
-    public class SkillsSection : INotifyPropertyChanged
+    public class SkillsSection : INotifyMultiplePropertyChanged
     {
         private readonly Character _objCharacter;
         private readonly Dictionary<Guid, Skill> _dicSkillBackups = new Dictionary<Guid, Skill>();
@@ -35,32 +38,50 @@ namespace Chummer.Backend.Skills
         public SkillsSection(Character character)
         {
             _objCharacter = character;
-            _objCharacter.LOG.PropertyChanged += KnoChanged;
-            _objCharacter.INT.PropertyChanged += KnoChanged;
-            
-            _objCharacter.SkillImprovementEvent += CharacterOnImprovementEvent;
+            _objCharacter.LOG.PropertyChanged += UpdateKnowledgePointsFromAttributes;
+            _objCharacter.INT.PropertyChanged += UpdateKnowledgePointsFromAttributes;
 
         }
 
         public void UnbindSkillsSection()
         {
-            _objCharacter.LOG.PropertyChanged -= KnoChanged;
-            _objCharacter.INT.PropertyChanged -= KnoChanged;
-            
-            _objCharacter.SkillImprovementEvent -= CharacterOnImprovementEvent;
+            _objCharacter.LOG.PropertyChanged -= UpdateKnowledgePointsFromAttributes;
+            _objCharacter.INT.PropertyChanged -= UpdateKnowledgePointsFromAttributes;
             _dicSkillBackups.Clear();
         }
 
-        private void CharacterOnImprovementEvent(ICollection<Improvement> improvements)
+        [NotifyPropertyChangedInvocator]
+        public void OnPropertyChanged([CallerMemberName] string strPropertyName = null)
         {
-            if (PropertyChanged != null && improvements.Any(x => x.ImproveType == Improvement.ImprovementType.FreeKnowledgeSkills))
+            OnMultiplePropertyChanged(strPropertyName);
+        }
+
+        public void OnMultiplePropertyChanged(params string[] lstPropertyNames)
+        {
+            ICollection<string> lstNamesOfChangedProperties = null;
+            foreach (string strPropertyName in lstPropertyNames)
             {
-                PropertyChanged.Invoke(this, new PropertyChangedEventArgs(nameof(HasKnowledgePoints)));
-                PropertyChanged.Invoke(this, new PropertyChangedEventArgs(nameof(KnowledgeSkillPoints)));
-                PropertyChanged.Invoke(this, new PropertyChangedEventArgs(nameof(KnowledgeSkillPointsRemain)));
+                if (lstNamesOfChangedProperties == null)
+                    lstNamesOfChangedProperties = SkillSectionDependancyGraph.GetWithAllDependants(strPropertyName);
+                else
+                {
+                    foreach (string strLoopChangedProperty in SkillSectionDependancyGraph.GetWithAllDependants(strPropertyName))
+                        lstNamesOfChangedProperties.Add(strLoopChangedProperty);
+                }
+            }
+
+            if ((lstNamesOfChangedProperties?.Count > 0) != true)
+                return;
+
+            if (PropertyChanged != null)
+            {
+                foreach (string strPropertyToChange in lstNamesOfChangedProperties)
+                {
+                    PropertyChanged.Invoke(this, new PropertyChangedEventArgs(strPropertyToChange));
+                }
             }
         }
-        
+
         internal void AddSkills(FilterOptions skills, string strName = "")
         {
             List<Skill> lstExistingSkills = GetSkillList(skills, strName, true).ToList();
@@ -129,7 +150,7 @@ namespace Chummer.Backend.Skills
                     _dicSkillBackups.Add(skill.SkillId, skill);
                     Skills.RemoveAt(i);
                     SkillsDictionary.Remove(skill.IsExoticSkill ? skill.Name + " (" + skill.DisplaySpecializationMethod(GlobalOptions.DefaultLanguage) + ')' : skill.Name);
-                    
+
                     if (_objCharacter.Created && skill.TotalBaseRating > 0 && createKnowledge)
                     {
                         KnowledgeSkill kno = new KnowledgeSkill(_objCharacter)
@@ -203,7 +224,6 @@ namespace Chummer.Backend.Skills
                         }
                 lstLoadingSkills.Sort(CompareSkills);
 
-
                 foreach (Skill objSkill in lstLoadingSkills)
                 {
                     string strName = objSkill.IsExoticSkill
@@ -221,6 +241,11 @@ namespace Chummer.Backend.Skills
                     });
                     if (blnDoAddToDictionary)
                         _dicSkills.Add(strName, objSkill);
+                }
+                // TODO: Skill groups don't refresh their CanIncrease property correctly when the last of their skills is being added, as the total basse rating will be zero. Call this here to force a refresh.
+                foreach (SkillGroup g in SkillGroups)
+                {
+                    g.OnPropertyChanged(nameof(SkillGroup.SkillList));
                 }
                 Timekeeper.Finish("load_char_skills_normal");
 
@@ -302,12 +327,12 @@ namespace Chummer.Backend.Skills
                 }
             }
 
-            //This might give subtle bugs in the future, 
-            //but right now it needs to be run once when upgrading or it might crash. 
-            //As some didn't they crashed on loading skills. 
+            //This might give subtle bugs in the future,
+            //but right now it needs to be run once when upgrading or it might crash.
+            //As some didn't they crashed on loading skills.
             //After this have run, it won't (for the crash i'm aware)
             //TODO: Move it to the other side of the if someday?
-            
+
             if (!_objCharacter.Created)
             {
                 // zero out any skillgroups whose skills did not make the final cut
@@ -366,7 +391,7 @@ namespace Chummer.Backend.Skills
                 },
                 () =>
                 {
-                    foreach (Skill objLoopSkill in KnowledgeSkills)
+                    foreach (KnowledgeSkill objLoopSkill in KnowledgeSkills)
                     {
                         dicSkills.TryAdd(objLoopSkill.Name, objLoopSkill.Id);
                     }
@@ -529,7 +554,7 @@ namespace Chummer.Backend.Skills
                 return fromAttributes + val;
             }
         }
-        
+
         /// <summary>
         /// Number of free Knowledge skill points the character have remaining
         /// </summary>
@@ -545,7 +570,7 @@ namespace Chummer.Backend.Skills
         /// </summary>
         public int KnowledgeSkillRanksSum
         {
-            get { return KnowledgeSkills.Sum(x => x.CurrentSpCost()); }
+            get { return KnowledgeSkills.Sum(x => x.CurrentSpCost); }
         }
 
         /// <summary>
@@ -713,6 +738,23 @@ namespace Chummer.Backend.Skills
             }
         }
 
+        private static readonly DependancyGraph<string> SkillSectionDependancyGraph =
+            new DependancyGraph<string>(
+                new DependancyGraphNode<string>(nameof(HasKnowledgePoints),
+                    new DependancyGraphNode<string>(nameof(KnowledgeSkillPoints))
+                ),
+                new DependancyGraphNode<string>(nameof(KnowledgeSkillPointsRemain),
+                    new DependancyGraphNode<string>(nameof(KnowledgeSkillPoints)),
+                    new DependancyGraphNode<string>(nameof(KnowledgeSkillPointsUsed),
+                        new DependancyGraphNode<string>(nameof(KnowledgeSkillRanksSum)),
+                        new DependancyGraphNode<string>(nameof(SkillPointsSpentOnKnoskills),
+                            new DependancyGraphNode<string>(nameof(KnowledgeSkillPoints)),
+                            new DependancyGraphNode<string>(nameof(KnowledgeSkillRanksSum))
+                        )
+                    )
+                )
+            );
+
         public enum FilterOptions
         {
             All = 0,
@@ -734,24 +776,23 @@ namespace Chummer.Backend.Skills
         {
             foreach (Skill objSkill in Skills)
             {
-                objSkill.ForceEvent(strName);
+                objSkill.OnPropertyChanged(strName);
             }
 
             foreach (KnowledgeSkill objSkill in KnowledgeSkills)
             {
-                objSkill.ForceEvent(strName);
+                objSkill.OnPropertyChanged(strName);
             }
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
-
-        [Obsolete("Should be private and stuff. Play a little once improvementManager gets events")]
-        private void KnoChanged(object sender, PropertyChangedEventArgs e)
+        
+        private void UpdateKnowledgePointsFromAttributes(object sender, PropertyChangedEventArgs e)
         {
-            if (PropertyChanged != null)
+            if ((_objCharacter.Options.UseTotalValueForFreeKnowledge && e.PropertyName == nameof(CharacterAttrib.TotalValue)) ||
+                 (!_objCharacter.Options.UseTotalValueForFreeKnowledge && e.PropertyName == nameof(CharacterAttrib.Value)))
             {
-                PropertyChanged.Invoke(this, new PropertyChangedEventArgs(nameof(KnowledgeSkillPoints)));
-                PropertyChanged.Invoke(this, new PropertyChangedEventArgs(nameof(HasKnowledgePoints)));
+                OnPropertyChanged(nameof(KnowledgeSkillPoints));
             }
         }
 

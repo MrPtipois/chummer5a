@@ -16,9 +16,8 @@ using System.Web.Script.Serialization;
 
 namespace CrashHandler
 {
-	public class CrashDumper : IDisposable
+	public sealed class CrashDumper : IDisposable
 	{
-		public List<string> FilesList => _filesList;
 		public Dictionary<string, string> PretendFiles => _pretendFiles;
 		public Dictionary<string, string> Attributes => _attributes;
 		public CrashDumperProgress Progress => _progress;
@@ -37,7 +36,7 @@ namespace CrashHandler
 		private readonly BackgroundWorker _worker = new BackgroundWorker();
 		private readonly ManualResetEvent _startSendEvent = new ManualResetEvent(false);
         private string _strLatestDumpName = string.Empty;
-	    
+
 	    private readonly TextWriter CrashLogWriter;
 
         /// <summary>
@@ -57,7 +56,7 @@ namespace CrashHandler
             CrashLogWriter.WriteLine("This file contains information on a crash report for Chummer5A.\n" +
                                      "You can safely delete this file, but a developer might want to look at it");
             CrashLogWriter.Flush();
-		    
+
 
 			if (!Deserialize(b64Json, out _procId, out _filesList, out _pretendFiles, out _attributes, out _threadId, out _exceptionPrt))
 			{
@@ -231,20 +230,20 @@ namespace CrashHandler
 				                      MINIDUMP_TYPE.MiniDumpWithUnloadedModules;
 
 				bool extraInfo = !(exceptionInfo == IntPtr.Zero || threadId == 0 || !debugger);
-				
+
 				if (extraInfo)
 				{
 					dtype |= 0;
-					ret = !(NativeMethods.MiniDumpWriteDump(process.Handle, _procId, file.SafeFileHandle.DangerousGetHandle(),
+					ret = !(NativeMethods.MiniDumpWriteDump(process.Handle, _procId, file.SafeFileHandle?.DangerousGetHandle() ?? IntPtr.Zero,
 						dtype, ref info, IntPtr.Zero, IntPtr.Zero));
-					
+
 				}
-				else if (NativeMethods.MiniDumpWriteDump(process.Handle, _procId, file.SafeFileHandle.DangerousGetHandle(),
+				else if (NativeMethods.MiniDumpWriteDump(process.Handle, _procId, file.SafeFileHandle?.DangerousGetHandle() ?? IntPtr.Zero,
 					dtype, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero))
 				{
 					ret = false;
-					
-					//Might solve the problem if crashhandler stops working on remote (hah)					
+
+					//Might solve the problem if crashhandler stops working on remote (hah)
 					Attributes["debug-debug-exception-info"] = exceptionInfo.ToString();
 					Attributes["debug-debug-thread-id"] = threadId.ToString();
 				}
@@ -284,7 +283,7 @@ namespace CrashHandler
 			{
 				if(!File.Exists(file)) continue;
 
-				string name = Path.GetFileName(file);
+				string name = Path.GetFileName(file) ?? string.Empty;
 				string destination = Path.Combine(WorkingDirectory, name);
 				File.Copy(file, destination);
 			}
@@ -331,8 +330,7 @@ namespace CrashHandler
 			}
             finally
             {
-                if (managed != null)
-                    managed.Dispose();
+                managed?.Dispose();
             }
 
 			return encrypted;
@@ -384,11 +382,10 @@ namespace CrashHandler
 			string payload = new JavaScriptSerializer().Serialize(upload);
 
 			HttpClient client = new HttpClient();
-			HttpResponseMessage msg = client.PostAsync("https://ccbysveroa.execute-api.eu-central-1.amazonaws.com/prod/ChummerCrashService",
-				new StringContent(payload)).Result;
+		    client.PostAsync("https://ccbysveroa.execute-api.eu-central-1.amazonaws.com/prod/ChummerCrashService", new StringContent(payload));
+		    //HttpResponseMessage msg = client.PostAsync("https://ccbysveroa.execute-api.eu-central-1.amazonaws.com/prod/ChummerCrashService", new StringContent(payload)).Result;
 
-			string result = msg.Content.ReadAsStringAsync().Result;
-
+		    //string result = msg.Content.ReadAsStringAsync().Result;
 		}
 
 		private void Clean()
@@ -429,7 +426,7 @@ namespace CrashHandler
 		//	}
 		//}
 
-		static bool Deserialize(string base64json, 
+		static bool Deserialize(string base64json,
 			out short processId, 
 			out List<string> filesList,
 			out Dictionary<string, string> pretendFiles, 
@@ -483,15 +480,14 @@ namespace CrashHandler
         #region IDisposable Support
         private bool disposedValue; // To detect redundant calls
 
-        protected virtual void Dispose(bool disposing)
+	    private void Dispose(bool disposing)
         {
             if (!disposedValue)
             {
                 if (disposing)
                 {
                     _startSendEvent.Dispose();
-                    if (CrashLogWriter != null)
-                        CrashLogWriter.Dispose();
+                    CrashLogWriter?.Dispose();
                 }
 
                 disposedValue = true;

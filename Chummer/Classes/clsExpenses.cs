@@ -17,7 +17,8 @@
  *  https://github.com/chummer5a/chummer5a
  */
  using System;
-using System.Xml;
+ using System.Diagnostics;
+ using System.Xml;
  using System.Globalization;
 
 namespace Chummer
@@ -91,6 +92,7 @@ namespace Chummer
     /// <summary>
     /// Undo information for an Expense Log Entry.
     /// </summary>
+    [DebuggerDisplay("{ObjectId}: {Qty.ToString()}, {Extra}")]
     public class ExpenseUndo
     {
         private string _strObjectId;
@@ -177,7 +179,7 @@ namespace Chummer
             objNode.TryGetDecFieldQuickly("qty", ref _decQty);
             objNode.TryGetStringFieldQuickly("extra", ref _strExtra);
         }
-        
+
         #endregion
 
         #region Properties
@@ -223,6 +225,7 @@ namespace Chummer
     /// <summary>
     /// Exense Log Entry.
     /// </summary>
+    [DebuggerDisplay("{Date.ToString()}: {Amount.ToString()}")]
     public class ExpenseLogEntry : IHasInternalId, IComparable
     {
         private Guid _guiID;
@@ -312,7 +315,7 @@ namespace Chummer
             DateTime.TryParse(objNode["date"]?.InnerText, GlobalOptions.InvariantCultureInfo, DateTimeStyles.None, out _datDate);
             objNode.TryGetDecFieldQuickly("amount", ref _decAmount);
             if (objNode.TryGetStringFieldQuickly("reason", ref _strReason))
-                _strReason.TrimEndOnce(" (" + LanguageManager.GetString("String_Expense_Refund", GlobalOptions.Language) + ')');
+                _strReason = _strReason.TrimEndOnce(" (" + LanguageManager.GetString("String_Expense_Refund", GlobalOptions.Language) + ')').Replace("🡒", "->");
             if (objNode["type"] != null)
                 _objExpenseType = ConvertToExpenseType(objNode["type"].InnerText);
             objNode.TryGetBoolFieldQuickly("refund", ref _blnRefund);
@@ -366,7 +369,15 @@ namespace Chummer
         public decimal Amount
         {
             get => _decAmount;
-            set => _decAmount = value;
+            set
+            {
+                if (_decAmount != value)
+                {
+                    _decAmount = value;
+                    if (!Refund)
+                        _objCharacter?.OnPropertyChanged(Type == ExpenseType.Nuyen ? nameof(Character.CareerNuyen) : nameof(Character.CareerKarma));
+                }
+            }
         }
 
         /// <summary>
@@ -384,7 +395,7 @@ namespace Chummer
         public string DisplayReason(string strLanguage)
         {
             if (Refund)
-                return Reason + " (" + LanguageManager.GetString("String_Expense_Refund", strLanguage) + ')';
+                return Reason + LanguageManager.GetString("String_Space", strLanguage) + '(' + LanguageManager.GetString("String_Expense_Refund", strLanguage) + ')';
             return Reason;
         }
 
@@ -394,7 +405,15 @@ namespace Chummer
         public ExpenseType Type
         {
             get => _objExpenseType;
-            set => _objExpenseType = value;
+            set
+            {
+                if (_objExpenseType != value)
+                {
+                    _objExpenseType = value;
+                    if (Amount > 0 && !Refund)
+                        _objCharacter?.OnMultiplePropertyChanged(nameof(Character.CareerNuyen), nameof(Character.CareerKarma));
+                }
+            }
         }
 
         /// <summary>
@@ -403,7 +422,15 @@ namespace Chummer
         public bool Refund
         {
             get => _blnRefund;
-            set => _blnRefund = value;
+            set
+            {
+                if (_blnRefund != value)
+                {
+                    _blnRefund = value;
+                    if (Amount > 0)
+                        _objCharacter?.OnPropertyChanged(Type == ExpenseType.Nuyen ? nameof(Character.CareerNuyen) : nameof(Character.CareerKarma));
+                }
+            }
         }
 
         /// <summary>
